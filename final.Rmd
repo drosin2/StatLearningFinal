@@ -5,7 +5,8 @@ date: "4/10/2022"
 output: html_document
 ---
 
-#TO DO:
+#TO DO:  
+-     
 - Impute NA values (need to change categorical cols classified as numeric to factor)
 - create random forests for all vars, then quantitative only (idealized/initial assesment)
 - Compare our prediction of mortality against SOFA pred of mortality (% acc or sd error?)
@@ -149,7 +150,6 @@ iterate <- function(proxMatrix){
     index <- which.max(val$avg)
     data[rowNum,column_name] <- val[index,1]
   }
-  
 }
   
   
