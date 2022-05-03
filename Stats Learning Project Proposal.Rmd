@@ -1,0 +1,97 @@
+---
+title: "Stats Learning Project Proposal"
+author: "Jack Rudnick, Luke Lorenz, Doug Rosin"
+date: "4/10/2022"
+output: html_document
+---
+
+#Research Question and Motivation
+
+The application of data science in the healthcare industry has the potential to spur a medical revolution. Researchers, doctors, and pharmaceutical companies are already applying data science to massive sets of patient data in order to identify potential risk factors for serious conditions, find relationships between a patient's genome and their response to various medications, and develop more personalized treatment regimes. Data science is the next frontier in medicine, and, for our project, we want to explore what that frontier looks like.    
+
+For our project, we hope to predict certain health outcomes with patient data. We have three potential research questions which are predicting mortality, duration of stay in the ICU, and positive blood cursor tests, which can be precursors for sepsis.
+
+
+
+#Data Background
+MIMIC-II is a database of health data of just under 40,000 patients who stayed in critical care units of Beth Israel Deaconess Medical Center from 2001 to 2012. Because MIMIC-II contains medical information, it requires credentialing before access. We were unfortunately denied access to the full data set. We will instead be using a segment of the data set that was made publically available, which contains data for 1776 patients. One advantage of using MIMIC-II, even the demo version, is the sheer number of variables contained within the database. The database has 46 variables containing patient data and outcome data. The website we downloaded the data from can be accessed at the following link: https://physionet.org/content/mimic2-iaccd/1.0/
+
+
+#Data Description
+Here is a list of the 46 variables in our dataset:
+
+aline_flg: IAC used (categorical, 1 = year, 0 = no)
+icu_los_day: length of stay in ICU (days, quantitative)
+hospital_los_day: length of stay in hospital (days, quantitative)
+age: age at baseline (years, quantitative)
+gender_num: patient gender (1 = male; 0=female)
+weight_first: first weight, (kg, quantitative)
+bmi: patient BMI, (quantitative)
+sapsi_first: first SAPS I score (quantitative)
+sofa_first: first SOFA score (quantitative)
+service_unit: type of service unit (character: FICU, MICU, SICU)
+service_num: service as a quantitative (categorical: 0 = MICU or FICU, 1 = SICU)
+day_icu_intime: day of week of ICU admission (character)
+day_icu_intime_num: day of week of ICU admission (quantitative, corresponds with day_icu_intime)
+hour_icu_intime: hour of ICU admission (quantitative, hour of admission using 24hr clock)
+hosp_exp_flg: death in hospital (categorical: 1 = yes, 0 = no)
+icu_exp_flg: death in ICU (categorical: 1 = yes, 0 = no)
+day_28_flg: death within 28 days (categorical: 1 = yes, 0 = no)
+mort_day_censored: day post ICU admission of censoring or death (days, quantitative)
+censor_flg: censored or death (categorical: 0 = death, 1 = censored)
+sepsis_flg: sepsis present (categorical: 0 = no, 1 = yes -- absent (0) for all)
+chf_flg: Congestive heart failure (categorical: 0 = no, 1 = yes)
+afib_flg: Atrial fibrillation (categorical: 0 = no, 1 = yes)
+renal_flg: Chronic renal disease (categorical: 0 = no, 1 = yes)
+liver_flg: Liver Disease (categorical: 0 = no, 1 = yes)
+copd_flg: Chronic obstructive pulmonary disease (categorical: 0 = no, 1 = yes)
+cad_flg: Coronary artery disease (categorical: 0 = no, 1 = yes)
+stroke_flg: Stroke (categorical: 0 = no, 1 = yes)
+mal_flg: Malignancy (categorical: 0 = no, 1 = yes)
+resp_flg: Respiratory disease (non-COPD) (categorical: 0 = no, 1 = yes)
+map_1st: Mean arterial pressure (mmHg, quantitative)
+hr_1st: Heart Rate (quantitative)
+temp_1st: Temperature (F, quantitative)
+spo2_1st: S_pO_2 (%, quantitative)
+abg_count: arterial blood gas count (number of tests, quantitative)
+wbc_first: first White blood cell count (K/uL, quantitative)
+hgb_first: first Hemoglobin (g/dL, quantitative)
+platelet_first: first Platelets (K/u, quantitativeL)
+sodium_first: first Sodium (mEq/L, quantitative)
+potassium_first: first Potassium (mEq/L, quantitative)
+tco2_first: first Bicarbonate (mEq/L, quantitative)
+chloride_first: first Chloride (mEq/L, quantitative)
+bun_first: first Blood urea nitrogen (mg/dL, quantitative)
+creatinine_first: first Creatinine (mg/dL, quantitative)
+po2_first: first PaO_2 (mmHg, quantitative)
+pco2_first: first PaCO_2 (mmHg, quantitative)
+iv_day_1: input fluids by IV on day 1 (mL, quantitative)
+
+
+#Methods:
+
+Regression would be most relevant for predicting the length of stay in the ICU given that the response variable for this research question is quantitative. We think KNN regression would be the best method of regression for this research question given it is a continuous range as opposed to a binary yes/no that logistic regression might be used for. We think cross validation would allow us to find the best K value possible for this regression. Evaluating our model would most likely be attempting to minimize RMSE. 
+
+Classification makes sense for predicting mortality given that mortality is a binary yes/no classification. We think this research question is well suited for random forests as we have a large number of predictors to sort through. We could additionally fit a knn classification model to  predict mortality and compare the error rates to see how a random forest may differ in predictions.
+
+Clustering might be a useful method for identifying precursors to sepsis, since patients that develop sepsis might have common results on various blood tests or other health related metrics. If this is the case then hierarchical clustering would help us identify the traits that are shared by patients that develop sepsis. This might also be an interest application for logistic regression given the binary nature of the response variable (sepsis).  
+
+
+#Loading in the data
+```{r loading lib}
+library(tidyverse)
+```
+
+```{r loading in the data}
+data <- read.csv("full_cohort_data.csv")
+```
+
+```{r}
+view(data)
+```
+
+
+
+
+
+

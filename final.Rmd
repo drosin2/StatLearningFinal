@@ -1,0 +1,198 @@
+---
+title: "Stats Learning Final Project"
+author: "Jack Rudnick, Luke Lorenz, Doug Rosin"
+date: "4/10/2022"
+output: html_document
+---
+
+#TO DO:
+- Impute NA values (need to change categorical cols classified as numeric to factor)
+- create random forests for all vars, then quantitative only (idealized/initial assesment)
+- Compare our prediction of mortality against SOFA pred of mortality (% acc or sd error?)
+
+
+
+```{r}
+library(tidyverse)
+library(randomForest)
+library(iml)
+```
+
+
+```{r}
+data <- read.csv("full_cohort_data.csv")
+```
+
+```{r convert to factors}
+data <- data %>%
+  mutate(gender_num = factor(gender_num,
+                             levels = c(0,1),
+                             labels = c("Female", "Male")),
+         aline_flg = factor(aline_flg,
+                             levels = c(0,1),
+                             labels = c("Year", "No")),
+         service_num = factor(service_num,
+                              levels = c(0,1),
+                              labels = c("MICU or FICU", "SICU")),
+         icu_exp_flg = factor(icu_exp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         hosp_exp_flg = factor(hosp_exp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         day_28_flg = factor(day_28_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         censor_flg = factor(censor_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         sepsis_flg = factor(sepsis_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         chf_flg = factor(chf_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         afib_flg = factor(afib_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         renal_flg = factor(renal_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         liver_flg = factor(liver_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         copd_flg = factor(copd_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         cad_flg = factor(cad_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         stroke_flg = factor(stroke_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         mal_flg = factor(mal_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         resp_flg = factor(resp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes"))
+         )
+
+```
+
+
+```{r imputing NA values}
+na_indicies <- which(is.na(data), arr.ind=TRUE)  
+
+
+# Function to calculate the mode
+Mode <- function(x) {
+  xx <- unique(x)
+  xx[which.max(tabulate(match(x, xx)))]
+}
+
+
+#replace the factor variables with the mode
+for(i in 1:ncol(data)){
+  for(j in 1:nrow(data)){
+    if(class(data[[i]])== "numeric"){
+      if (is.na(data[j,i])){
+        data[j,i] <- median(as.numeric(unlist(data[,i])),
+                            na.rm= TRUE)
+      }
+    }
+    else{
+      if (is.na(data[j,i])){
+        data[j,i]<-Mode(na.omit(data[,i]))
+    }
+  }
+  }
+}
+
+```
+
+```{r fitting random forest to the data}
+rf <- randomForest(formula = target ~., 
+                   data = heart,
+                   proximity = TRUE)
+```
+
+```{r storing proximity matrix}
+pm <- data.frame(rf$proximity)
+```
+
+```{r}
+iterate <- function(proxMatrix){
+  for (i in 1:nrow(na_indicies)){
+  column_names <-colnames(data)
+  # Storing indicies of the na value
+  rowNum <- na_indicies[i,1]
+  colNum <- na_indicies[i,-1]
+  column_name <- column_names[colNum]
+  # If the column contains numeric variables as opposed to categorical
+
+  if(sapply(data[,colNum], class)[1] == "numeric"){
+    # print("Entering col 5")
+    #updtating NA val with imputed val across the column
+    imputed_val <- sum(data[-rowNum,column_name] * proxMatrix[-rowNum,rowNum]/ sum(proxMatrix[-rowNum,rowNum]))
+    data[rowNum,colNum] <- imputed_val
+    
+  }else{ #Contains categorical vars, not numeric
+    # print("entering other col")
+    #df to store proximity excluding the row of intrest
+    df_factor <- data.frame(proximity = proxMatrix[-rowNum,rowNum],
+                            class = data[-rowNum,column_name])
+    
+    val <- df_factor %>% #computing for mode
+      group_by_at("class") %>%
+      summarize(avg = mean(proximity))
+    index <- which.max(val$avg)
+    data[rowNum,column_name] <- val[index,1]
+  }
+  
+}
+  
+  
+}
+```
+
+```{r}
+for (i in 1:50){
+  #Fitting random forest + getting prox mtx
+  rf <- randomForest(formula = censor_flg ~., 
+                   data = data,
+                   proximity = TRUE)
+  pmtx <- data.frame(rf$proximity)
+  
+  iterate(pmtx)
+  print(paste("iteration", i , "done"))
+}
+```
+
+
+```{r}
+gort <- data %>%
+  select(-mort_day_censored,-hosp_exp_flg,-icu_exp_flg,-day_28_flg)
+```
+
+
+```{r}
+rf <- randomForest(formula =  censor_flg~ ., #for importance of heart disease
+                   data = na.omit(gort),
+                   importance = TRUE)
+```
+
+```{r}
+varImpPlot(rf)
+```
+
+```{r}
+pred_obj <- Predictor$new(rf, data = na.omit(gort))
+temp <- FeatureEffect$new(pred_obj, feature = "age", method = "pdp")
+plot(temp)
+```
+
+
+
+
+
