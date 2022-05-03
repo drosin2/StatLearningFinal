@@ -46,7 +46,7 @@ data <- data %>%
                                labels = c("No","Yes")),
          censor_flg = factor(censor_flg,
                                levels = c(0,1),
-                               labels = c("No","Yes")),
+                               labels = c("Death","Censored")),
          sepsis_flg = factor(sepsis_flg,
                                levels = c(0,1),
                                labels = c("No","Yes")),
@@ -112,15 +112,6 @@ for(i in 1:ncol(data)){
 
 ```
 
-```{r fitting random forest to the data}
-rf <- randomForest(formula = target ~., 
-                   data = heart,
-                   proximity = TRUE)
-```
-
-```{r storing proximity matrix}
-pm <- data.frame(rf$proximity)
-```
 
 ```{r}
 iterate <- function(proxMatrix){
@@ -158,7 +149,7 @@ iterate <- function(proxMatrix){
 
 ```{r}
 for (i in 1:50){
-  #Fitting random forest + getting prox mtx
+  #Fitting random forest to predict censor + getting prox mtx
   rf <- randomForest(formula = censor_flg ~., 
                    data = data,
                    proximity = TRUE)

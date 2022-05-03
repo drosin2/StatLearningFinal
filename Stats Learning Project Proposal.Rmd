@@ -14,7 +14,7 @@ For our project, we hope to predict certain health outcomes with patient data. W
 
 
 #Data Background
-MIMIC-II is a database of health data of just under 40,000 patients who stayed in critical care units of Beth Israel Deaconess Medical Center from 2001 to 2012. Because MIMIC-II contains medical information, it requires credentialing before access. We were unfortunately denied access to the full data set. We will instead be using a segment of the data set that was made publically available, which contains data for 1776 patients. One advantage of using MIMIC-II, even the demo version, is the sheer number of variables contained within the database. The database has 46 variables containing patient data and outcome data. The website we downloaded the data from can be accessed at the following link: https://physionet.org/content/mimic2-iaccd/1.0/
+MIMIC-II is a database of health data of just under 40,000 patients who stayed in critical care units of Beth Israel Deaconess Medical Center from 2001 to 2012. Because MIMIC-II contains medical information, it requires credentialing before access. We were unfortunately denied access to the full data set. We will instead be using a segment of the data set that was made publicly available, which contains data for 1776 patients. One advantage of using MIMIC-II, even the demo version, is the sheer number of variables contained within the database. The database has 46 variables containing patient data and outcome data. The website we downloaded the data from can be accessed at the following link: https://physionet.org/content/mimic2-iaccd/1.0/
 
 
 #Data Description
