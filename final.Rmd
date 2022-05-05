@@ -147,8 +147,8 @@ iterate <- function(proxMatrix){
 }
 ```
 
-```{r}
-for (i in 1:50){
+```{r imputing na data}
+for (i in 1:20){
   #Fitting random forest to predict censor + getting prox mtx
   rf <- randomForest(formula = censor_flg ~., 
                    data = data,
@@ -160,7 +160,57 @@ for (i in 1:50){
 }
 ```
 
+#LOGISTIC REGRESSION FOR ICU STAY
+```{r}
+ggplot(data = data, aes(x = bmi,
+                        y = icu_los_day)) +
+  geom_point()
+```
 
+```{r adding line}
+ggplot(data = data, aes(x = bmi,
+                        y = icu_los_day)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) # add line
+```
+
+```{r splitting testing/training}
+n <- nrow(data)
+set.seed(1)
+# Common to use 70% or 80% of observations for training set
+train_indices <- sample(1:n, size = floor(0.8*n)) 
+train_data <- data %>%
+  slice(train_indices)
+test_data <- data %>%
+  slice(-train_indices)
+```
+
+
+```{r fitting on train set}
+fit <- lm(icu_los_day ~ bmi + age, data=test_data)
+summary(fit) # show results
+```
+
+
+```{r making preds on test set}
+pred_stay <- predict(fit, newdata = test_data)
+```
+The predictions are conservative in nature (about all the same), so how do we predict those long stays???
+
+```{r computing rmse}
+mean( (test_data$icu_los_day - pred_stay)^2 ) # test MSE
+sqrt( mean( (test_data$icu_los_day - pred_stay)^2 ) ) # test RMSE
+```
+are these vals significant?
+
+#A non-linear model is likely better, so we can try polynomial regression!
+```{r trying polynomial reg}
+
+```
+
+
+
+#FITTING RANDOM FOREST FOR CENSOR_FLG
 ```{r}
 gort <- data %>%
   select(-mort_day_censored,-hosp_exp_flg,-icu_exp_flg,-day_28_flg)
