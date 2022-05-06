@@ -160,7 +160,81 @@ for (i in 1:20){
 }
 ```
 
-#LOGISTIC REGRESSION FOR ICU STAY
+
+#LINEAR REGRESSION FOR ICU STAY
+
+For predicting the length of stay in the icu
+  
+```{r mean, median, mode for ICU stay}
+
+```
+
+
+```{r mean, median, and mode for the length of ICU stay}
+ggplot(data = data,
+       aes(x = icu_los_day))+
+  geom_histogram(binwidth = 0.4) +
+  labs(x = "Length of Stay in the Hospital (Days)")
+
+```
+
+```{r maybe facet wrap based on a variable of intrest?}
+ggplot(data = data,
+       aes(x = icu_los_day))+
+  geom_histogram(binwidth = 0.4) +
+  labs(x = "Length of Stay in the Hospital (Days)") +
+  facet_grid(~service_num)
+```
+#Medical intensive care unit vs surgical intensive care unit
+
+
+
+```{r boxplot for outliers}
+#computing outliers
+outlier_data <- data %>%
+  mutate(outlier = icu_los_day > median(icu_los_day) + IQR(icu_los_day) * 1.5)
+
+ggplot(data = outlier_data,
+       aes(x = icu_los_day,
+           y =  ""))+
+  geom_boxplot(outlier.shape = NA) +
+  #for better outlier visualization
+  geom_point(data = function(x) dplyr::filter_(x, ~ outlier), position = 'jitter')
+  labs(x = "Length of Stay in the Hospital (Days)")
+```
+#When looking at this data, we can see we have a large distribution of stays (1776) around the 2-4 day mark, but there are also 214 outliers in the data. These two are equally important to distinguish, as long stays in the ICU are resource intensive and important for allocation with finite spaces.
+
+```{r getting the percent of outliers}
+count(outlier_data %>% filter(outlier == TRUE)) / count(outlier_data %>% filter(outlier == FALSE)) *100
+```
+13.7 percent of our patients admitted into the ICU were outliers
+
+#FIT LR model on non-outliers, or short stay, vs outliers, or long stay
+
+```{r splitting into testing/training}
+
+```
+
+
+```{r Linear regression model for shorter stay (on training)}
+
+```
+
+```{r Lineary regression model for longer stay (on training)}
+
+```
+
+
+#Boxplot to pull out outliers
+#Fit a LR model on Short term vs long term stay
+
+
+```{r}
+
+```
+
+
+
 ```{r}
 ggplot(data = data, aes(x = bmi,
                         y = icu_los_day)) +
