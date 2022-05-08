@@ -212,45 +212,9 @@ count(outlier_data %>% filter(outlier == TRUE)) / count(outlier_data %>% filter(
 #FIT LR model on non-outliers, or short stay, vs outliers, or long stay
 
 ```{r splitting into testing/training}
-
-```
-
-
-```{r Linear regression model for shorter stay (on training)}
-
-```
-
-```{r Lineary regression model for longer stay (on training)}
-
-```
-
-
-#Boxplot to pull out outliers
-#Fit a LR model on Short term vs long term stay
-
-
-```{r}
-
-```
-
-
-
-```{r}
-ggplot(data = data, aes(x = bmi,
-                        y = icu_los_day)) +
-  geom_point()
-```
-
-```{r adding line}
-ggplot(data = data, aes(x = bmi,
-                        y = icu_los_day)) +
-  geom_point() + 
-  geom_smooth(method = "lm", se = FALSE) # add line
-```
-
-```{r splitting testing/training}
-n <- nrow(data)
 set.seed(1)
+n <- nrow(data)
+set.seed(10)
 # Common to use 70% or 80% of observations for training set
 train_indices <- sample(1:n, size = floor(0.8*n)) 
 train_data <- data %>%
@@ -258,24 +222,52 @@ train_data <- data %>%
 test_data <- data %>%
   slice(-train_indices)
 ```
+#Do we need to filter data for outliers before or after splitting into testing/training???
+#Can also filter where the duration of stay is above XXX days?
 
+```{r}
+#count unique vars
+sapply(lapply(data, unique), length)
+```
+we can see sepsis_flg only has one var, so we do not include it in our model fitting
 
-```{r fitting on train set}
-fit <- lm(icu_los_day ~ bmi + age, data=test_data)
-summary(fit) # show results
+```{r Linear regression model for shorter stay (on training)}
+
+#Taking a linear model without sepsis, because that column has no unique values
+m <- lm(formula = icu_los_day ~ ., data = subset(data,
+                                                 select = -sepsis_flg)) 
+m
+```
+
+```{r making predictions}
+pred_short_stay <- predict(m, newdata = test_data)
+```
+
+```{r compute MSE and RMSE}
+mean( (test_data$icu_los_day - pred_short_stay)^2 ) # test MSE
+sqrt( mean( (test_data$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
 ```
 
 
-```{r making preds on test set}
-pred_stay <- predict(fit, newdata = test_data)
-```
-The predictions are conservative in nature (about all the same), so how do we predict those long stays???
+```{r Linear regression model for longer stay (on training)}
 
-```{r computing rmse}
-mean( (test_data$icu_los_day - pred_stay)^2 ) # test MSE
-sqrt( mean( (test_data$icu_los_day - pred_stay)^2 ) ) # test RMSE
 ```
-are these vals significant?
+
+#Then fit one more model to predict
+```{r polynomial regression}
+
+```
+
+#Finally, comparing with knn regression
+```{r running knn regression on our dataset to predict LOS in ICU}
+
+```
+
+
+
+
+
+
 
 #A non-linear model is likely better, so we can try polynomial regression!
 ```{r trying polynomial reg}
