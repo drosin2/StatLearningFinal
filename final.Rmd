@@ -11,18 +11,34 @@ output: html_document
 - create random forests for all vars, then quantitative only (idealized/initial assesment)
 - Compare our prediction of mortality against SOFA pred of mortality (% acc or sd error?)
 
+**I. Introduction**
+
+– What does your dataset look like? What are the observations? What are the variables and their
+types (categorical vs. quantitative)?
 
 
-```{r}
+– Why is this data important and/or interesting, either to you personally or to someone else?
+
+
+– If there is any background information that I should be aware of, please include it here. For
+instance, if you have a jargon-heavy dataset, make sure that you describe it in a way that a
+layperson would understand.
+
+
+– What are your main research questions?
+
+
+```{r importing libs}
 library(tidyverse)
 library(randomForest)
 library(iml)
 library(FNN)
-library(car)
+library(e1071) #svm
+library(quantreg) #quant reg
 ```
 
 
-```{r}
+```{r reading in dataset}
 data <- read.csv("full_cohort_data.csv")
 ```
 
@@ -258,6 +274,8 @@ sqrt( mean( (test_short$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
 ```
 
 
+
+
 ```{r Linear regression model for longer stay (on training)}
 
 set.seed(1)
@@ -292,13 +310,23 @@ sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
 #comparatively, these are two very small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
 
-<!-- ```{r} -->
-<!-- ggplot(data = outlier_data, aes(x = bmi, y = icu_los_day, color = outlier)) + -->
-<!--   geom_point() + -->
-<!--   # labs(x = "Weighted mean of distances to five Boston employment centers", -->
-<!--   #      y = "Median home value (in $1000s)") + -->
-<!--   geom_smooth(method = "lm", se = TRUE) -->
-<!-- ``` -->
+
+#Due to the sheer amount of factors, it may be understandable that a linear model does not work in higher dimensions. To combat this, we attempt to utilize a support vector machine on the long and short stays
+
+
+
+```{r brief quantile regression for observation of age on icu stay}
+
+colors <- c("#ffe6e6", "#ffcccc", "#ff9999", "#ff6666", "#ff3333",
+            "#ff0000", "#cc0000", "#b30000", "#800000", "#4d0000", "#000000")
+multi_rqfit <- rq(icu_los_day ~ age, data = data, tau = seq(0, 1, by = 0.1))
+plot(icu_los_day ~ age, data = data, pch = 16)
+for (j in 1:ncol(multi_rqfit$coefficients)) {
+    abline(coef(multi_rqfit)[, j], col = colors[j])
+}
+```
+#obviously, as the age of the patient admitted goes up, the average predicted ICU stay will also increase. This is apparent across all quantiles with all linear coefficients.
+
 
 
 ```{r splitting testing/training again}
@@ -363,30 +391,20 @@ plot(temp)
 #increase in ICU stay for a respitory disease
 
 
-#FITTING RANDOM FOREST FOR CENSOR_FLG
-```{r}
-gort <- data %>%
-  select(-mort_day_censored,-hosp_exp_flg,-icu_exp_flg,-day_28_flg)
-```
 
 
-```{r}
-rf <- randomForest(formula =  censor_flg~ ., #for importance of heart disease
-                   data = na.omit(gort),
-                   importance = TRUE)
-```
+**III. Discussion/Conclusion**
 
-```{r}
-varImpPlot(rf)
-```
-
-```{r}
-pred_obj <- Predictor$new(rf, data = na.omit(gort))
-temp <- FeatureEffect$new(pred_obj, feature = "age", method = "pdp")
-plot(temp)
-```
+– What did you learn about your data from this project?
+– What would be the next step if you or someone else were to continue analyzing this data set? In
+answering this, you can assume that you have unlimited time and resources to gather more data.
+– What are some of the limitations of your work? For example, maybe you think you need other
+modeling tools, maybe you think there’s too much randomness to glean anything meaningful from
+your data, etc.
 
 
-
-
+**IV. Bibliography**
+– Cite where you retrieved your data.
+– If you did any background research on your topic (e.g., to figure out what a variable means or to
+verify whether your results make sense), include those sources too.
 
