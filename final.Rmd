@@ -34,6 +34,7 @@ library(randomForest)
 library(iml)
 library(FNN)
 library(e1071) #svm
+library(pROC)
 library(quantreg) #quant reg
 ```
 
@@ -413,6 +414,176 @@ plot(temp)
 #many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) also resulted in a small increase in the predicted length of stay.
 
 
+
+#Predicting Liver Disease
+
+```{r}
+table(data$liver_flg)
+
+99/1677 *100
+```
+5.90% of patients in the data set had liver disease. This likely means sensativity will be off. 
+
+```{r select data to predict patients with liver disease}
+data_liver_disease <- data %>%
+  select(age, weight_first, bmi, map_1st, hr_1st, temp_1st, spo2_1st
+         , wbc_first, hgb_first,
+         platelet_first, 
+         sodium_first,
+         potassium_first,
+         tco2_first,
+         chloride_first,
+         bun_first,
+         creatinine_first,
+         po2_first,
+         pco2_first, 
+         liver_flg)
+```
+
+selecting for things that can be quickly tested for when a patient is admitted to the ICU or info than easily be gotten by docotors. 
+
+#liver disease method one: logistic regression
+```{r split into test and train for liver disease}
+p <- nrow(data_liver_disease)
+set.seed(1)
+# Common to use 70% or 80% of observations for training set
+train_liver_indices <- sample(1:p, size = floor(0.7*p)) 
+train_liver_data <- data_liver_disease %>%
+  slice(train_liver_indices)
+test_liver_data <- data_liver_disease %>%
+  slice(-train_liver_indices)
+```
+
+```{r}
+z <- glm(formula = liver_flg ~., data = train_liver_data, family = binomial)
+summary(z)
+```
+
+some significant predictors here. 
+
+```{r}
+pred_prob_liver <- predict(z, newdata = test_liver_data, type = "response")
+```
+
+
+```{r use a loop to determine best decision threshold}
+
+store_accuracy <- c()
+store_sensitivity <- c()
+store_specificity <- c()
+
+for( t in seq(from = 0.1, to = 0.9, by = 0.1)) {
+  pred_class_labels_liver <- ifelse(pred_prob_liver > t, "Yes", "No")
+  conf_mtx_liver <- table(pred_class_labels_liver, test_liver_data$liver_flg)
+  
+  #accuracy
+  store_accuracy[t*10] <- sum(diag(conf_mtx_liver))/sum(conf_mtx_liver)
+  #sensitivity (true liver disease haves labeled as liver disease haves)
+  store_sensitivity[t*10] <- conf_mtx_liver[2,2]/sum(conf_mtx_liver[,2])
+  #specificity(people that do not have liver disease that were predicted as not having liver    disease)
+  store_specificity[t*10] <- conf_mtx_liver[1,1]/sum(conf_mtx_liver[,1])
+  
+  
+}
+
+tibble(decision_threshold = seq(from = 0.1, to = 0.9, by = 0.1),
+       accuracy = store_accuracy,
+       sensitivity = store_sensitivity,
+       specificity = store_specificity)
+
+
+```
+
+Im selecting a decision threshold of 0.4. This is getting a high sensitivity without sacrificing much in the way of accuracy or specificity. 
+
+```{r}
+pred_class_labels_liver <- ifelse(pred_prob_liver > 0.4, "Yes", "No") # convert to labels
+
+conf_mtx_liver <- table(pred_class_labels_liver, test_liver_data$liver_flg)
+conf_mtx_liver
+```
+
+The model seems good at predicting patients without liver disease and bad a predicting patients with liver disease. This is worrying given that a doctor wants to see higher sensativity in these cases.  
+
+```{r}
+#accuracy
+sum(diag(conf_mtx_liver))/sum(conf_mtx_liver)
+#sensitivity (true liver disease haves labeled as liver disease haves)
+conf_mtx_liver[2,2]/sum(conf_mtx_liver[,2])
+#specificity(people that do not have liver disease that were predicted as not having liver disease)
+conf_mtx_liver[1,1]/sum(conf_mtx_liver[,1])
+```
+
+```{r}
+roc_obj_liver <- roc(predictor = pred_prob_liver, 
+               response = test_liver_data$liver_flg)
+plot(roc_obj_liver, legacy.axes = TRUE)
+```
+
+```{r}
+auc(roc_obj_liver)
+
+
+coords(roc_obj_liver) %>%
+  mutate(youden = sensitivity + specificity - 1) %>%
+  slice_max(youden)
+```
+
+AUC and youden are both fine, but I think this is from the high specificity and does not really refelct how bad the model is at finding cases of liver disease. 
+
+#random forest to see importance on liver disease
+`
+```{r random forest to determine predictor importance on liver disease}
+
+rf_liver <- randomForest(formula =  liver_flg~ ., #for importance of liver disease
+                   data = data_liver_disease,
+                   importance = TRUE)
+```
+
+```{r}
+varImpPlot(rf_liver, cex = 0.7)
+```
+
+
+```{r}
+set.seed(6)
+
+rf_prediction_liver <- randomForest(formula =  liver_flg~ ., #for importance of liver disease
+                   data = train_liver_data,
+                   importance = TRUE)
+```
+
+```{r}
+head(rf_prediction_liver$predicted)
+head(rf_prediction_liver$votes)
+rf_prediction_liver$confusion
+rf_prediction_liver$err.rate
+
+plot(1:500, rf_prediction_liver$err.rate[,3])
+```
+
+```{r}
+pred_apps <- predict(rf_prediction_liver, newdata = test_liver_data)
+pred_apps
+```
+
+```{r}
+rf_liver_tests <- tibble(predicted = pred_apps,
+       actual = test_liver_data$liver_flg)
+```
+
+```{r}
+cf <- table(rf_liver_tests)
+
+#accuracy
+sum(diag(cf))/sum(cf)
+#sensitivity (true liver disease haves labeled as liver disease haves)
+cf[2,2]/sum(cf[,2])
+#specificity(people that do not have liver disease that were predicted as not having liver disease)
+cf[1,1]/sum(cf[,1])
+```
+
+Basically we see the same thing here as we did in logistic regression. The model is really good at predicting patients that do not have liver disease and really bad at predicting cases with liver disease. I think this is likely due to a lack of observations with liver disease to train against.   
 
 
 **III. Discussion/Conclusion**
