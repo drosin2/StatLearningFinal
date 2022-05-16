@@ -36,6 +36,12 @@ library(FNN)
 library(e1071) #svm
 library(pROC)
 library(quantreg) #quant reg
+library(vtable)
+library(ISLR)
+library(class)
+library(sjlabelled)
+library(corrplot)
+library(cowplot)
 ```
 
 
@@ -584,6 +590,405 @@ cf[1,1]/sum(cf[,1])
 ```
 
 Basically we see the same thing here as we did in logistic regression. The model is really good at predicting patients that do not have liver disease and really bad at predicting cases with liver disease. I think this is likely due to a lack of observations with liver disease to train against.   
+
+
+###MORTALITY PREDICTION
+
+```{r}
+set.seed(1)
+mortalitydata <- data
+```
+
+```{r}
+num_cols <- unlist(lapply(mortalitydata, is.numeric))
+```
+
+```{r}
+data.knn <- mortalitydata[ , num_cols] %>%
+  dplyr::select(where(is.numeric))
+```
+
+
+```{r}
+data.knn$censor_flg <- mortalitydata$censor_flg
+```
+
+
+## Split Into Training vs. Test
+
+```{r split into training and test}
+#set.seed(1)
+n <- nrow(data.knn)
+train_indices <- sample(1:n, size = floor(0.8*n))
+train.knn <- data.knn %>% slice(train_indices)
+test.knn <- data.knn %>% slice(-train_indices)
+```
+
+## k-Fold Cross-Validation
+
+```{r assign observations to folds}
+num_folds <- 10 # number of folds
+
+# Create a variable (`fold_id`) assigning each observation in the training
+# set to a fold between 1 and `num_folds`
+train.knn <- train.knn %>%
+  mutate(fold_id = 1:n() %% num_folds)
+```
+
+```{r k-fold CV}
+# Vector of numbers of nearest neighbors 
+K_seq <- 1:60
+
+# Create vector to store k-fold cross-validation error for each number of
+# nearest neighbors
+store_kCV_err <- c()
+
+# Loop over numbers of nearest neighbors
+for(num_near in K_seq) {
+  
+  # Create vector to store model error for each held-out fold
+  store_fold_err <- rep(0, num_folds)
+  
+  # Loop over folds
+  # Remember that `fold_id` goes from 0 to (number of folds - 1)
+  for(i in 0:(num_folds-1)) { 
+    
+    # Train on all but the ith fold
+    # Separate into predictors (X) and response (Y)
+    train_X <- train.knn %>% 
+      filter(fold_id != i) %>% 
+      select(-censor_flg, -fold_id) 
+    train_Y <- train.knn %>% 
+      filter(fold_id != i) %>% 
+      pull(censor_flg) 
+    
+    # Test on the ith fold
+    # Separate into predictors (X) and response (Y)
+    test_X <- train.knn %>% 
+      filter(fold_id == i) %>% 
+      select(-censor_flg, -fold_id) 
+    test_Y <- train.knn %>%
+      filter(fold_id == i) %>%
+      pull(censor_flg)
+    
+    # Normalize the predictors in the training and test sets, using the means and
+    # standard deviations from the training set only
+    train_means <- apply(train_X, MARGIN = 2, FUN = mean)
+    train_sds <- apply(train_X, MARGIN = 2, FUN = sd)
+    train_X_norm <- scale(train_X)
+    test_X_norm <- scale(test_X, center = train_means, scale = train_sds)
+    
+    # Run KNN classification with the given number of nearest neighbors
+    knn_preds <- knn(train = train_X_norm, 
+                     test = test_X_norm, 
+                     cl = train_Y, 
+                     k = num_near)
+    
+    # Store the model error for this fold
+    # The model error is the proportion of incorrectly classified
+    # observations in the hold-out fold
+    store_fold_err[i+1] <- sum(knn_preds != test_Y)/length(test_Y)
+    
+  } 
+  
+  # Store the k-fold CV error for this number of nearest neighbors
+  # The k-fold CV error is the average model error across all the held-out
+  # folds
+  store_kCV_err <- c(store_kCV_err, mean(store_fold_err))
+  
+}
+```
+
+```{r plot k-fold CV error as function of K}
+# Plot the k-fold CV error as a function of the number of nearest neighbors
+ggplot(tibble(K = K_seq, err = store_kCV_err), aes(x = K, y = err)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "K-Fold Cross-Validation Error",
+       subtitle = "KNN Classification",
+       x = "Number of Nearest Neighbors",
+       y = "Average Proportion of Misclassified Observations")
+```
+
+## Fit Final Model
+
+```{r choose value of K}
+# Choose optimal value of K based on error plot above
+# Note that this is somewhat subjective!
+opt_num_near <- 19
+```
+
+```{r fit final model}
+# Fit the final model on the full training set, using the optimal K chosen
+# above
+
+# Separate full training set into predictors (X) and response (Y)
+train_X <- train.knn %>% 
+  select(-censor_flg, -fold_id) 
+train_Y <- train.knn %>% 
+  pull(censor_flg) 
+
+# Separate test set into predictors (X) and response (Y)
+test_X <- test.knn %>% 
+  select(-censor_flg) 
+test_Y <- test.knn %>%
+  pull(censor_flg)
+
+# Normalize the predictors in the training and test sets, using the means and
+# standard deviations from the training set only
+train_means <- apply(train_X, MARGIN = 2, FUN = mean)
+train_sds <- apply(train_X, MARGIN = 2, FUN = sd)
+train_X_norm <- scale(train_X)
+test_X_norm <- scale(test_X, center = train_means, scale = train_sds)
+
+knn_preds_final <- knn(train = train_X_norm, 
+                       test = test_X_norm, 
+                       cl = train_Y, 
+                       k = opt_num_near) # use optimal K
+```
+
+```{r assess final model performance}
+# Make confusion matrix
+conf_mtx <- table(knn_preds_final, test_Y)
+conf_mtx
+
+sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+conf_mtx[2,2]/sum(conf_mtx[,2]) # sensitivity
+conf_mtx[1,1]/sum(conf_mtx[,1]) # specificity
+```
+
+
+
+###LOGISTIC REGRESSION ON DEATH
+
+
+
+#```{r}
+num_cols <- unlist(lapply(data, is.numeric))
+#```
+
+#```{r}
+data.glm <- data[ , num_cols] 
+#```
+
+
+#```{r}
+data.glm$censor_flg <- data$censor_flg
+#```
+
+
+
+#```{r convert to factors}
+data <- data %>%
+  mutate(gender_num = factor(gender_num,
+                             levels = c(0,1)),
+                             #labels = c("Female", "Male")),
+         aline_flg = factor(aline_flg,
+                             levels = c(0,1)),
+                             #labels = c("Year", "No")),
+         service_num = factor(service_num,
+                              levels = c(0,1)),
+                              #labels = c("MICU or FICU", "SICU")),
+         icu_exp_flg = factor(icu_exp_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         hosp_exp_flg = factor(hosp_exp_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         day_28_flg = factor(day_28_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         censor_flg = factor(censor_flg,
+                               levels = c(0,1)),
+                               #labels = c("Death","Censored")),
+         sepsis_flg = factor(sepsis_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         chf_flg = factor(chf_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         afib_flg = factor(afib_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         renal_flg = factor(renal_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         liver_flg = factor(liver_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         copd_flg = factor(copd_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         cad_flg = factor(cad_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         stroke_flg = factor(stroke_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         mal_flg = factor(mal_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes")),
+         resp_flg = factor(resp_flg,
+                               levels = c(0,1)),
+                               #labels = c("No","Yes"))
+         )
+#```
+
+Question 1: Cleaned dataset
+```{r}
+#Split into training and test set
+set.seed(1)
+n <- nrow(data)
+train_indices <- sample(1:n, size = floor(0.8*n))
+train_data <- data %>%slice(train_indices)
+test_data <- data %>%slice(-train_indices)
+```
+
+```{r imputing NA values for training set}
+na_indicies <- which(is.na(data), arr.ind=TRUE)  
+# Function to calculate the mode
+Mode <- function(x) {
+  xx <- unique(x)
+  xx[which.max(tabulate(match(x, xx)))]
+}
+#replace the factor variables with the mode
+for(i in 1:ncol(train_data)){
+  for(j in 1:nrow(train_data)){
+    if(class(train_data[[i]])== "numeric"){
+      if (is.na(train_data[j,i])){
+        train_data[j,i] <- mean(as.numeric(unlist(train_data[,i])),
+                            na.rm= TRUE)
+      }
+    }
+    else{
+      if (is.na(train_data[j,i])){
+        train_data[j,i]<-Mode(na.omit(train_data[,i]))
+    }
+  }
+  }
+}
+```
+
+```{r imputing NA values for test set}
+#na_indicies <- which(is.na(data), arr.ind=TRUE)  
+# Function to calculate the mode
+Mode <- function(x) {
+  xx <- unique(x)
+  xx[which.max(tabulate(match(x, xx)))]
+}
+#replace the factor variables with the mode
+for(i in 1:ncol(test_data)){
+  for(j in 1:nrow(test_data)){
+    if(class(test_data[[i]])== "numeric"){
+      if (is.na(test_data[j,i])){
+        test_data[j,i] <- mean(as.numeric(unlist(train_data[,i])),
+                            na.rm= TRUE)
+      }
+    }
+    else{
+      if (is.na(test_data[j,i])){
+        test_data[j,i]<-Mode(na.omit(train_data[,i]))
+    }
+  }
+  }
+}
+```
+
+
+
+
+
+```{r}
+train_data<- train_data %>%
+  select(-day_icu_intime, -mort_day_censored, -day_28_flg, -hosp_exp_flg, -icu_exp_flg, -hospital_los_day, -service_unit)
+test_data<- test_data %>%
+  select(-day_icu_intime, -mort_day_censored, -day_28_flg, -hosp_exp_flg, -icu_exp_flg, -hospital_los_day, -service_unit)
+
+```
+
+
+
+
+
+
+
+
+
+**10/10**
+Part 2: Fit logistic regression
+```{r}
+m <- glm(formula = censor_flg ~ ., 
+          data = subset(train_data,select = -sepsis_flg), 
+          family = binomial)
+summary(m)
+```
+
+
+
+**5/5**
+Question 3: Model Evaluation
+
+```{r}
+#Calculate the probability of fault in the test set
+pred_prob <- predict(m, newdata = test_data, type = "response") # predicted probabilities
+
+# roc() function to plot an ROC curve for the test set
+roc_obj <- roc(predictor = pred_prob, 
+               response = test_data$censor_flg)
+plot(roc_obj, legacy.axes = TRUE)
+```
+
+```{r}
+auc(roc_obj)
+```
+This is somewhat better than a model that randomly guesses.
+
+
+```{r}
+#find youden index and ideal decision threshold
+coords(roc_obj) %>%
+  mutate(youden = sensitivity + specificity - 1) %>%
+  slice_max(youden)
+```
+The ROC curve looks like a staircase because there are only 4 positives in the test set. Lowering the decision threshold slightly usually affects the specificity (by adding false positives) without changing the sensitivity (no additional true positives). In other words, when the model correctly classifies a positive, the sensitivity jumps. The height of the jumps are all the same because each one is a 25% increase in the true positive rate. The widths of the steps correspond to the number of false positives with a predicted probability between each true positive. This number of false positives is not consistent which is why the steps have differing widths.
+
+```{r}
+#Use the ideal decision threshold from the Youden Index calculation
+pred_class_labels <- ifelse(pred_prob > 0.55057, "Yes", "No") # use the ideal threshold
+#make a confusion matrix
+conf_mtx <- table(pred_class_labels, test_data$censor_flg)
+conf_mtx
+
+```
+
+```{r}
+sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
+conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
+```
+
+
+```{r}
+library(cowplot)
+age<- ggplot(train_data, aes(x=age, y=censor_flg)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
+  labs(x = "Age")
+copd_flg<- ggplot(train_data, aes(x=copd_flg, y=censor_flg)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial))+
+  labs (x = "Chronic Obstructive Pulmonary Disease")
+stroke_flg<- ggplot(train_data, aes(x=stroke_flg, y=censor_flg)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
+  labs(x = "Stroke")
+chloride_first<- ggplot(train_data, aes(x=chloride_first, y=censor_flg)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
+  labs(x = "First Chloride")
+
+plot_grid(age, chloride_first, copd_flg, stroke_flg )
+```
 
 
 **III. Discussion/Conclusion**
