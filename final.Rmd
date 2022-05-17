@@ -591,6 +591,41 @@ cf[1,1]/sum(cf[,1])
 
 Basically we see the same thing here as we did in logistic regression. The model is really good at predicting patients that do not have liver disease and really bad at predicting cases with liver disease. I think this is likely due to a lack of observations with liver disease to train against.   
 
+```{r}
+importance(rf)
+```
+
+```{r}
+#variable importance plot
+varImpPlot(rf, cex = 0.5)
+```
+
+It appears cp and ca are important under both MDI and MDA
+
+```{r}
+age_obj <- Predictor$new(rf, data = data)
+age_plot <- FeatureEffect$new(age_obj, feature = "age", method = "pdp", center.at = 0)
+plot(age_plot)
+```
+
+
+
+```{r}
+bun_obj <- Predictor$new(rf, data = data)
+bun_plot <- FeatureEffect$new(bun_obj, feature = "bun_first", method = "pdp", center.at = 0)
+plot(bun_plot)
+```
+
+```{r}
+los_obj <- Predictor$new(rf, data = data)
+bun_plot <- FeatureEffect$new(los_obj, feature = "sapsi_first", method = "pdp", center.at = 0)
+plot(bun_plot)
+```
+```{r}
+importance(rf)
+varImpPlot(rf, cex =0.5)
+```
+
 
 ###MORTALITY PREDICTION
 
