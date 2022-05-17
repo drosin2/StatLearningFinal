@@ -22,6 +22,10 @@ layperson would understand.
 
 – What are your main research questions?
 
+**II. Methods **
+
+
+**III. Results **
 
 ```{r importing libs}
 library(tidyverse)
@@ -105,6 +109,8 @@ data <- data %>%
 ```
 
 
+
+
 ```{r imputing NA values}
 na_indicies <- which(is.na(data), arr.ind=TRUE)  
 
@@ -136,6 +142,20 @@ for(i in 1:ncol(data)){
 ```
 We have ~1200 total vars that are NA, so we begin by replacing categorical NA with the mode of the column, and numeric NA's with the median. We then create a function that takes in a proximity matrix and updates imputed NA values 
 
+#Mean / Mode table
+```{r getting the mean and the mode of all columns}
+meanModeTable <- data
+
+for(i in 1:ncol(meanModeTable)){
+  if(class(meanModeTable[,i]) == "numeric"){
+    meanModeTable[,i] <- mean(meanModeTable[,i])
+  }else{
+    meanModeTable[,i] <- Mode(na.omit(meanModeTable[,i]))
+  }
+}
+meanModeTable <- meanModeTable[1,]
+view(meanModeTable)
+```
 
 ```{r function to update NA values based on the prox matrix}
 iterate <- function(proxMatrix){
@@ -188,9 +208,8 @@ for (i in 1:10){
 
 **QUESTION OF INTEREST #1: PREDICTING LENGTH OF ICU STAY**
 
-- Motivation:
-
-
+Motivation:
+Due to the ominous nature of ICU patients, no singular model should be used in all situations. We therefore employ multiple models for robust predictions of ICU length of stay. We start with a linear regression model, as there is a clear interpretation of the relationship between our variables of interest and ICU length of stay outcomes. We then compare outcomes of linear regression to support vector regression, which provides a better fit on non-linear data. We conclude with a random forest model which utilizes cross validation, and will not be subjected to overfitting.
 
 #LINEAR REGRESSION FOR ICU STAY
 
@@ -386,7 +405,8 @@ Across all predictions, support vector regression does better than linear regres
 
 
 
-**SUMMARY RMSE:**
+**SUMMARY RMSE for LM and SVM:**
+
 Linear model for whole dataset: 
 3.417015
 linear model for short stay / long stay:
@@ -461,6 +481,8 @@ plot(temp)
 ```
 many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) (among other variables) also resulted in a small increase in the predicted length of stay.
 
+
+**QUESTION OF INTEREST #2: PREDICTING LIVER DISEASE**
 
 #Predicting Liver Disease
 
@@ -668,7 +690,7 @@ varImpPlot(rf, cex =0.5)
 ```
 
 
-###MORTALITY PREDICTION
+**QUESTION OF INTEREST #1: PREDICTING LENGTH OF ICU STAY**
 
 ```{r}
 set.seed(1)
@@ -1065,21 +1087,258 @@ chloride_first<- ggplot(train_data, aes(x=chloride_first, y=censor_flg)) +
 
 plot_grid(age, chloride_first, copd_flg, stroke_flg )
 ```
+### Split data in half for old vs young
+```{r}
+#rf.data<- read_csv("/Users/dougrosin/Downloads/mortalitydata.csv") %>% select(-X1)
+rf.old<- data %>%
+  filter(age> median(data$age))
+
+```
 
 
-**III. Discussion/Conclusion**
+```{r splitting testing/training again}
+set.seed(1)
+n <- nrow(rf.old)
+# Common to use 70% or 80% of observations for training set
+train.indices.rf <- sample(1:n, size = floor(0.7*n)) 
+train.rf <- rf.old %>%
+  slice(train.indices.rf)
+test.rf <- rf.old %>%
+  slice(-train.indices.rf)
+```
 
-– What did you learn about your data from this project?
-  -
-– What would be the next step if you or someone else were to continue analyzing this data set? In
-answering this, you can assume that you have unlimited time and resources to gather more data.
-  -Full dataset
-  -Other hospitals
-  -
-– What are some of the limitations of your work? For example, maybe you think you need other
-modeling tools, maybe you think there’s too much randomness to glean anything meaningful from
-your data, etc.
-  -
+
+```{r fit rf to predict mortality}
+ #taking out length of stay in hospital???
+#removing var with obvious covariance
+glm.old <- glm(formula = censor_flg ~., 
+                   data = subset(train.rf, select = -sepsis_flg),
+                   family = binomial)
+
+```
+
+
+
+
+```{r predicting w test data and fitted forest}
+pred_prob<- predict(glm.old, newdata = test.rf, type = "response")
+
+```
+
+
+
+
+```{r}
+#Calculate the probability of fault in the test set
+
+# roc() function to plot an ROC curve for the test set
+roc_obj <- roc(predictor = pred_prob, 
+               response = test.rf$censor_flg)
+plot(roc_obj, legacy.axes = TRUE)
+```
+
+```{r}
+auc(roc_obj)
+```
+This is somewhat better than a model that randomly guesses.
+
+
+```{r}
+#find youden index and ideal decision threshold
+coords(roc_obj) %>%
+  mutate(youden = sensitivity + specificity - 1) %>%
+  slice_max(youden)
+```
+
+
+```{r}
+#Use the ideal decision threshold from the Youden Index calculation
+pred_class_labels <- ifelse(pred_prob > 0.4749, "Yes", "No") # use the ideal threshold
+#make a confusion matrix
+conf_mtx <- table(pred_class_labels, test.rf$censor_flg)
+conf_mtx
+
+```
+
+```{r}
+sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
+conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
+```
+
+
+
+
+
+```{r}
+rf.old.model <- randomForest(formula = censor_flg ~., 
+                   data = subset(train.rf, select = -sepsis_flg),
+                   importance = TRUE)
+```
+
+
+```{r predicting w test data and fitted forest}
+pred.old <- predict(rf.old.model, newdata = test.rf, type = "response")
+
+```
+
+
+
+```{r}
+#Use the ideal decision threshold from the Youden Index calculation
+#pred.labels.rf <- ifelse(pred.rf.mortality > 0.55057, "Censored", "Death") # use the ideal threshold
+#make a confusion matrix
+conf_mtx <- table(pred.old, test.rf$censor_flg)
+conf_mtx
+
+```
+
+```{r}
+sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
+conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
+```
+
+
+### Predict on young
+```{r}
+#rf.data<- read_csv("/Users/dougrosin/Downloads/mortalitydata.csv") %>% select(-X1)
+rf.young<- data %>%
+  filter(age< median(data$age))
+
+```
+
+
+
+
+```{r splitting testing/training again}
+set.seed(1)
+n <- nrow(rf.young)
+# Common to use 70% or 80% of observations for training set
+train.indices.rf <- sample(1:n, size = floor(0.7*n)) 
+train.rf.young <- rf.young %>%
+  slice(train.indices.rf)
+test.rf.young <- rf.young %>%
+  slice(-train.indices.rf)
+```
+
+
+```{r fit rf to predict mortality}
+ #taking out length of stay in hospital???
+#removing var with obvious covariance
+glm.young <- glm(formula = censor_flg ~., 
+                   data = subset(train.rf.young, select = -sepsis_flg),
+                   family = binomial)
+
+```
+
+
+
+
+```{r predicting w test data and fitted forest}
+pred.prob.young.glm<- predict(glm.young, newdata = test.rf.young, type = "response")
+
+```
+
+
+
+
+```{r}
+#Calculate the probability of fault in the test set
+
+# roc() function to plot an ROC curve for the test set
+roc_obj <- roc(predictor = pred.prob.young.glm, 
+               response = test.rf.young$censor_flg)
+plot(roc_obj, legacy.axes = TRUE)
+```
+
+```{r}
+auc(roc_obj)
+```
+This is somewhat better than a model that randomly guesses.
+
+
+```{r}
+#find youden index and ideal decision threshold
+coords(roc_obj) %>%
+  mutate(youden = sensitivity + specificity - 1) %>%
+  slice_max(youden)
+```
+
+
+```{r}
+#Use the ideal decision threshold from the Youden Index calculation
+pred_class_labels <- ifelse(pred.prob.young.glm > 0.4236, "Yes", "No") # use the ideal threshold
+#make a confusion matrix
+conf_mtx <- table(pred_class_labels, test.rf.young$censor_flg)
+conf_mtx
+
+```
+
+```{r}
+sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
+conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
+```
+
+
+```{r}
+sensitivity<- c()
+specificity<- c()
+accuracy<- c()
+for(i in seq(1,500,30)){
+  rf.young.model <- randomForest(formula = censor_flg ~., 
+                   data = subset(train.rf.young, select = -sepsis_flg),
+                   importance = TRUE,
+                   ntree = i)
+  pred.young <- predict(rf.young.model, newdata = test.rf.young, type = "response")
+  conf_mtx <- table(pred.young, test.rf.young$censor_flg)
+  sensitivity <- append(sensitivity, conf_mtx[1,1]/sum(conf_mtx[,1]))
+  specificity <- append(specificity, conf_mtx[2,2]/sum(conf_mtx[,2]))
+  accuracy <- append(accuracy, sum( diag(conf_mtx) )/sum(conf_mtx))
+}
+```
+
+
+```{r}
+df2 <- data.frame(mortality_accuracy = sensitivity, 
+                  censor_accuracy = specificity, 
+                  accuracy = accuracy,
+                  ntrees= seq(1, 500, 30))
+```
+
+```{r}
+df2 %>%
+  ggplot()+
+  geom_line(aes(x =ntrees, y = accuracy, colour = "green"))+
+  geom_line(aes(x = ntrees, y = censor_accuracy, colour = "blue"))+
+  geom_line(aes(x = ntrees, y = mortality_accuracy, colour = "red"))
+
+##ntrees = 181 maximizes complexity, and accuracy across all three levels
+```
+
+
+
+
+
+```{r 91 tree random forest}
+set.seed(1)
+rf.young.model <- randomForest(formula = censor_flg ~., 
+                               data = subset(train.rf.young, select = (-sepsis_flg)),
+                               importance = TRUE,
+                               ntree = 181)
+pred.young <- predict(rf.young.model, newdata = test.rf.young, type = "response")
+conf_mtx <- table(pred.young, test.rf.young$censor_flg)
+conf_mtx
+conf_mtx[1,1]/sum(conf_mtx[,1])
+conf_mtx[2,2]/sum(conf_mtx[,2])
+sum( diag(conf_mtx) )/sum(conf_mtx)
+
+```
+
+**IV. Discussion**
+
+
 
 
 **IV. Bibliography**
