@@ -5,11 +5,6 @@ date: "4/10/2022"
 output: html_document
 ---
 
-#TO DO:  
--     
-- Impute NA values (need to change categorical cols classified as numeric to factor)
-- create random forests for all vars, then quantitative only (idealized/initial assesment)
-- Compare our prediction of mortality against SOFA pred of mortality (% acc or sd error?)
 
 **I. Introduction**
 
@@ -48,6 +43,8 @@ library(cowplot)
 ```{r reading in dataset}
 data <- read.csv("full_cohort_data.csv")
 ```
+When our data is originally loaded in, the categorical vars are either 1 or 0. We need to convert the categorical vars to factors, so as not to be confused with our numeric variables of interest.
+
 
 ```{r convert to factors}
 data <- data %>%
@@ -136,8 +133,9 @@ for(i in 1:ncol(data)){
 }
 
 ```
+We have ~1200 total vars that are NA, so we begin by replacing categorical NA with the mode of the column, and numeric NA's with the median. We then create a function that takes in a proximity matrix and updates imputed NA values 
 
-#We might not need to do this, since we are fitting a forest based on death, this may be biased on proximity? I dont think so though
+
 ```{r function to update NA values based on the prox matrix}
 iterate <- function(proxMatrix){
   for (i in 1:nrow(na_indicies)){
@@ -172,6 +170,7 @@ iterate <- function(proxMatrix){
 }
 ```
 
+Run the function above 10 times on our data
 ```{r imputing na data}
 #only doing 10 iterations due to the large number of NA's
 for (i in 1:10){
@@ -186,6 +185,10 @@ for (i in 1:10){
 }
 ```
 
+**QUESTION OF INTEREST #1: PREDICTING LENGTH OF ICU STAY**
+
+- Motivation:
+
 
 #LINEAR REGRESSION FOR ICU STAY
 
@@ -195,7 +198,20 @@ For predicting the length of stay in the icu
 mean(data$icu_los_day)
 median(data$icu_los_day)
 ```
+Looking at some summary information, the average length of stay in the ICU was around 3.3 days, and the median was around 2.2 days. One can see that the mean is much higher than the median, indicating the data is skewed to the right. 
 
+Continuing with some summary info, plotting brief exploratory quantile regression for age and ICU stay
+```{r brief quantile regression for observation of age on icu stay}
+
+colors <- c("#ffe6e6", "#ffcccc", "#ff9999", "#ff6666", "#ff3333",
+            "#ff0000", "#cc0000", "#b30000", "#800000", "#4d0000", "#000000") #colors for regression lines
+multi_rqfit <- rq(icu_los_day ~ age, data = data, tau = seq(0, 1, by = 0.1)) #quantile regrssion
+plot(icu_los_day ~ age, data = data, pch = 16) #plotting reg
+for (j in 1:ncol(multi_rqfit$coefficients)) { #plotting quartiles
+    abline(coef(multi_rqfit)[, j], col = colors[j])
+}
+```
+obviously, as the age of the patient admitted goes up, the average predicted ICU stay will also increase. This is apparent across all quantiles with all linear coefficients.
 
 ```{r mean, median, and mode for the length of ICU stay}
 ggplot(data = data,
@@ -204,6 +220,7 @@ ggplot(data = data,
   labs(x = "Length of Stay in the ICU (Days)")
 
 ```
+Looking at the distribution of length of stays, you can see that there are many what people would consider outliers in the graph, there are numerous stays beyond 10 days
 
 ```{r maybe facet wrap based on a variable of intrest?}
 ggplot(data = data,
@@ -212,9 +229,7 @@ ggplot(data = data,
   labs(x = "Length of Stay in the Hospital (Days)") +
   facet_grid(~service_num)
 ```
-#Medical intensive care unit vs surgical intensive care unit, both seem to have similar distributions and a non-zero number of outliers
-
-
+When checking medical intensive care unit vs surgical intensive care unit, both seem to have similar distributions and a non-zero number of outliers. Therefore, this length of stay is not unique to the type of ICU that the patient was admitted into.
 
 ```{r boxplot for outliers}
 #computing outlines
@@ -227,18 +242,20 @@ ggplot(data = outlier_data,
   geom_boxplot() +
   labs(x = "Length of Stay in the ICU (Days)")
 ```
-#When looking at this data, we can see we have a large distribution of stays (1776) around the 2-4 day mark, but there are also 214 outliers in the data. These two are equally important to distinguish, as long stays in the ICU are resource intensive and important for allocation with finite spaces.
+when looking at this data, we can see we have a large distribution of stays (1776) around the 2-4 day mark, but there are also 214 outliers in the data. These two are equally important to distinguish, as long stays in the ICU are resource intensive and important for allocation with finite spaces.
 
 ```{r getting the percent of outliers}
 count(outlier_data %>% filter(outlier == TRUE))
 
 count(outlier_data %>% filter(outlier == TRUE)) / count(outlier_data %>% filter(outlier == FALSE)) *100
 ```
-13.7 percent of our patients admitted into the ICU were outliers (214 patients in our dataset)
+These calculations show that 13.7 percent of our patients admitted into the ICU were outliers (214 patients in our dataset)
 
 #FIT LR models on non-outliers, or short stay, vs outliers, or long stay
+Because of the outliers above, we decided to split training data into outliers vs non outliers, then fit two linear models for short stay and long stay.When predicting for our data, we would then flow down our observation, first classfying if the data classified it as an outlier, then fitting the consequential linear model on that data. We found that this was a crude way to greatly improve the performance of a linear model on our dataset.
 
-```{r splitting into testing/training}
+#For short stay
+```{r splitting into testing/training short stay}
 set.seed(1)
 
 short_stay <- outlier_data %>% filter(outlier == FALSE)
@@ -254,12 +271,11 @@ test_short <- short_stay %>%
 
 ```
 
-
 ```{r}
 #count unique vars, or columns that all contain the same variable and therefore will be excluded from our regression model
 sapply(lapply(data, unique), length)
 ```
-we can see sepsis_flg only has one var, so we do not include it in our model fitting
+Checking for unique variables, we can see sepsis_flg only has one variable, so we do not include it in our model fitting
 
 ```{r Linear regression model for shorter stay (on training)}
 #Taking a linear model without sepsis, because that column has no unique values and will result in error if run
@@ -276,10 +292,10 @@ pred_short_stay <- predict(m, newdata = test_short)
 mean( (test_short$icu_los_day - pred_short_stay)^2 ) # test MSE
 sqrt( mean( (test_short$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
 ```
+How do these compare to our longer stay model?
 
 
-
-
+#Repeating the steps for longer stay
 ```{r Linear regression model for longer stay (on training)}
 set.seed(1)
 #filtering by outliers
@@ -312,9 +328,10 @@ pred_long_stay <- predict(m2, newdata = test_long)
 mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
-#comparatively, these are two very small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
+comparatively, these are two very small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
+How do these rates compare to if we were to fit only 1 model on the dataset?
 
-
+#Testing on a singluar model for RMSE value comparison
 ```{r testing without outlier filtering (both short and long stays)}
 set.seed(1)
 
@@ -337,25 +354,13 @@ pred_long_stay <- predict(m3, newdata = test_compare)
 mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
-#Without splitting the observations into long stay vs short stay, our linear model does not work nearly as well as our two smaller models
+Without splitting the observations into long stay vs short stay, our linear model does not work nearly as well as our two smaller models
 
-
-
-
-```{r brief quantile regression for observation of age on icu stay}
-
-colors <- c("#ffe6e6", "#ffcccc", "#ff9999", "#ff6666", "#ff3333",
-            "#ff0000", "#cc0000", "#b30000", "#800000", "#4d0000", "#000000") #colors for regression lines
-multi_rqfit <- rq(icu_los_day ~ age, data = data, tau = seq(0, 1, by = 0.1)) #quantile regrssion
-plot(icu_los_day ~ age, data = data, pch = 16) #plotting reg
-for (j in 1:ncol(multi_rqfit$coefficients)) { #plotting quartiles
-    abline(coef(multi_rqfit)[, j], col = colors[j])
-}
-```
-#obviously, as the age of the patient admitted goes up, the average predicted ICU stay will also increase. This is apparent across all quantiles with all linear coefficients.
 
 
 #FITTING RANDOM FOREST for ICU STAY
+
+How does a random forest compare to our linear model? Random forests additionally allow for exploration into important variables
 ```{r splitting testing/training again}
 set.seed(1)
 
@@ -370,7 +375,7 @@ test_rf <- data %>%
 
 ```
 
-
+Filtering out variable with obvious covariance (length of stay in hospital)
 ```{r fitting random forest without the length of stay in the hospital}
 updated_train_rf <- train_rf %>%
   dplyr::select(-hospital_los_day) #taking out length of stay in hospital???
@@ -379,7 +384,7 @@ updated_train_rf <- train_rf %>%
 rf <- randomForest(formula = icu_los_day ~., 
                    data = train_rf,
                    importance = TRUE)
-#This is the one we're currently using 
+#This is the one we're currently using , DOES NOT contain hospital_los_day
 rf_with_hospital <- randomForest(formula = icu_los_day ~., 
                    data = updated_train_rf,
                    importance = TRUE)
@@ -393,23 +398,19 @@ pred_rf <- predict(rf_with_hospital, newdata = test_rf)
 mean( (test_rf$icu_los_day - pred_rf)^2 ) # test MSE
 sqrt( mean( (test_rf$icu_los_day - pred_rf)^2 ) ) # test RMSE
 ```
-#our rmse was a bit higher for the random forest, but we also didn't split apart into outliers. 
+our rmse was a bit higher for the random forest, but we also didn't split apart into outliers. 
 
 ```{r variable importance plot}
-varImpPlot(rf_with_hospital)
+varImpPlot(rf_with_hospital, cex = 0.7)
 ```
-#arterial blood gas count seemed to be the most important predictor for predicting length of ICU stay, for some reason
-#The length of stay in the hospital was a  close second. I was unsure wether to keep this in
-An arterial blood gas analysis (ABG) measures the balance of oxygen and carbon dioxide in your blood to see how well your lungs are working
-
-Removed 
+arterial blood gas count seemed to be the most important predictor for predicting length of ICU stay. An arterial blood gas analysis (ABG) measures the balance of oxygen and carbon dioxide in your blood to see how well your lungs are working
 
 ```{r partial dependence plot}
 pred_obj <- Predictor$new(rf, data = data)
 temp <- FeatureEffect$new(pred_obj, feature = "abg_count", method = "pdp")
 plot(temp)
 ```
-#The length of stay increases significantly as the abg count increases. For the vast majority of ICU patients, their abg count is less than 15, meaning the influcence on ICU stay is relatively low. However, when the abg count exceeds this, predicted length of ICU stay climbs steeply, as between 15-30 the length of stay jumps 2 days.
+The length of stay increases significantly as the abg count increases. For the vast majority of ICU patients, their abg count is less than 15, meaning the influcence on ICU stay is relatively low. However, when the abg count exceeds this, predicted length of ICU stay climbs steeply, as between 15-30 the length of stay jumps 2 days.
 
 
 ```{r}
@@ -417,8 +418,7 @@ pred_obj <- Predictor$new(rf, data = data)
 temp <- FeatureEffect$new(pred_obj, feature = "resp_flg", method = "pdp")
 plot(temp)
 ```
-#many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) also resulted in a small increase in the predicted length of stay.
-
+many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) (among other variables) also resulted in a small increase in the predicted length of stay.
 
 
 #Predicting Liver Disease
@@ -428,7 +428,7 @@ table(data$liver_flg)
 
 99/1677 *100
 ```
-5.90% of patients in the data set had liver disease. This likely means sensativity will be off. 
+5.90% of patients in the data set had liver disease. This likely means sensitivity will be off. 
 
 ```{r select data to predict patients with liver disease}
 data_liver_disease <- data %>%
@@ -1029,11 +1029,16 @@ plot_grid(age, chloride_first, copd_flg, stroke_flg )
 **III. Discussion/Conclusion**
 
 – What did you learn about your data from this project?
+  -
 – What would be the next step if you or someone else were to continue analyzing this data set? In
 answering this, you can assume that you have unlimited time and resources to gather more data.
+  -Full dataset
+  -Other hospitals
+  -
 – What are some of the limitations of your work? For example, maybe you think you need other
 modeling tools, maybe you think there’s too much randomness to glean anything meaningful from
 your data, etc.
+  -
 
 
 **IV. Bibliography**
