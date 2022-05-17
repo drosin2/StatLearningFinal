@@ -28,7 +28,7 @@ library(tidyverse)
 library(randomForest)
 library(iml)
 library(FNN)
-library(e1071) #svm
+library(e1071) #support vector regression
 library(pROC)
 library(quantreg) #quant reg
 library(vtable)
@@ -43,8 +43,9 @@ library(cowplot)
 ```{r reading in dataset}
 data <- read.csv("full_cohort_data.csv")
 ```
-When our data is originally loaded in, the categorical vars are either 1 or 0. We need to convert the categorical vars to factors, so as not to be confused with our numeric variables of interest.
 
+##Data Pre-processing:
+To enhance the accuracy/reliability of our predictive models, we convert the categorical vars to factors, so as not to be confused with our numeric variables of interest.
 
 ```{r convert to factors}
 data <- data %>%
@@ -190,6 +191,7 @@ for (i in 1:10){
 - Motivation:
 
 
+
 #LINEAR REGRESSION FOR ICU STAY
 
 For predicting the length of stay in the icu
@@ -254,20 +256,29 @@ These calculations show that 13.7 percent of our patients admitted into the ICU 
 #FIT LR models on non-outliers, or short stay, vs outliers, or long stay
 Because of the outliers above, we decided to split training data into outliers vs non outliers, then fit two linear models for short stay and long stay.When predicting for our data, we would then flow down our observation, first classfying if the data classified it as an outlier, then fitting the consequential linear model on that data. We found that this was a crude way to greatly improve the performance of a linear model on our dataset.
 
-#For short stay
+#For short stay/long
 ```{r splitting into testing/training short stay}
 set.seed(1)
 
 short_stay <- outlier_data %>% filter(outlier == FALSE)
+long_stay <- outlier_data %>% filter(outlier == TRUE)
 
 n <- nrow(short_stay)
-set.seed(10)
+
 # Common to use 70% or 80% of observations for training set
 train_indices <- sample(1:n, size = floor(0.8*n)) 
 train_short <- short_stay %>%
   slice(train_indices)
 test_short <- short_stay %>%
   slice(-train_indices)
+
+n2 <- nrow(long_stay)
+# 80% of observations for training set
+train_indices2 <- sample(1:n2, size = floor(0.8*n2)) 
+train_long <- long_stay %>%
+  slice(train_indices2)
+test_long <- long_stay %>%
+  slice(-train_indices2)
 
 ```
 
@@ -279,88 +290,118 @@ Checking for unique variables, we can see sepsis_flg only has one variable, so w
 
 ```{r Linear regression model for shorter stay (on training)}
 #Taking a linear model without sepsis, because that column has no unique values and will result in error if run
-m <- lm(formula = icu_los_day ~ ., data = subset(short_stay,
+m <- lm(formula = icu_los_day ~ ., data = subset(train_short,
                                                  select = -sepsis_flg)) 
-m
-```
-
-```{r making predictions on the test data}
+#making predictions on the test data
 pred_short_stay <- predict(m, newdata = test_short)
-```
 
-```{r compute MSE and RMSE}
+#compute MSE and RMSE
 mean( (test_short$icu_los_day - pred_short_stay)^2 ) # test MSE
 sqrt( mean( (test_short$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
 ```
-How do these compare to our longer stay model?
+How do these values compare to our longer stay model?
 
 
 #Repeating the steps for longer stay
-```{r Linear regression model for longer stay (on training)}
-set.seed(1)
-#filtering by outliers
-long_stay <- outlier_data %>% filter(outlier == FALSE)
-
-n <- nrow(long_stay)
-set.seed(10)
-# 80% of observations for training set
-train_indices <- sample(1:n, size = floor(0.8*n)) 
-train_long <- long_stay %>%
-  slice(train_indices)
-test_long <- long_stay %>%
-  slice(-train_indices)
-
-```
-
 
 ```{r}
 #same procedure as fitting our linear model for short stay
-m2 <- lm(formula = icu_los_day ~ ., data = subset(test_long,
+m2 <- lm(formula = icu_los_day ~ ., data = subset(train_long,
                                                  select = -sepsis_flg)) 
-m2
-```
-
-```{r predicting using our data}
+#making predictions on the test data
 pred_long_stay <- predict(m2, newdata = test_long)
-```
 
-```{r compute MSE and RMSE}
+#compute MSE and RMSE
 mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
-comparatively, these are two very small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
-How do these rates compare to if we were to fit only 1 model on the dataset?
+comparatively, these are two small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
 
+How do these rates compare to if we were to fit only 1 model on the dataset?
 #Testing on a singluar model for RMSE value comparison
 ```{r testing without outlier filtering (both short and long stays)}
 set.seed(1)
-
-n <- nrow(data)
-set.seed(10)
+n3 <- nrow(data)
 # Common to use 70% or 80% of observations for training set
-train_indices <- sample(1:n, size = floor(0.8*n)) 
+train_indices3 <- sample(1:n3, size = floor(0.8*n3)) 
 train_compare <- data %>%
-  slice(train_indices)
+  slice(train_indices3)
 test_compare <- data %>%
-  slice(-train_indices)
+  slice(-train_indices3)
 ```
 
 ```{r testing without outlier filtering}
 m3 <- lm(formula = icu_los_day ~ ., data = subset(test_compare,
                                                  select = -sepsis_flg))
-pred_long_stay <- predict(m3, newdata = test_compare)
+pred_all_stay <- predict(m3, newdata = test_compare)
 
 #computing
-mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
-sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
+mean( (test_compare$icu_los_day - pred_long_stay)^2 ) # test MSE
+sqrt( mean( (test_compare$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
 Without splitting the observations into long stay vs short stay, our linear model does not work nearly as well as our two smaller models
 
 
+#Comparing linear regression models to a support vector regression model
+
+Linear regression typically cannot capture the non linearity in a dataset and therefore support vector regression machines can become handy in such situations. We compare both of our linear models (short and long stay) to support vector regression models in the same situation
+```{r testing svm on short stay}
+#fitting svm
+modelsvm <- svm(icu_los_day ~.,
+                data = subset(train_short, select = -sepsis_flg))
+#predicting
+predYsvm = predict(modelsvm, newdata = test_short)
+
+mean( (test_short$icu_los_day - predYsvm)^2 ) # test MSE
+sqrt( mean( (test_short$icu_los_day - predYsvm)^2 ) ) # test RMSE
+```
+The mse and rmse for the support vector regression model on short stay were lower than the linear regression model on short stay. This is likely due to the fact that linear models assume linear relationships with covariates, and support vector machines can assist on providing a better fit on on linear data.
+
+We now compare for long stay
+
+```{r testing svm on long stay}
+# #fitting svm
+# modelsvm <- svm(icu_los_day ~.,
+#                 data = subset(train_long, select = -sepsis_flg))
+# #predicting
+# predYsvm = predict(modelsvm, newdata = subset(test_long, select = -sepsis_flg))
+# 
+# mean( (test_long$icu_los_day - predYsvm)^2 ) # test MSE
+# sqrt( mean( (test_long$icu_los_day - predYsvm)^2 ) ) # test RMSE
+```
+For some reason, the lack of observations in the long stay test set are resulting in errors. We can still fit another svm on both datasets together
+
+
+```{r testing svm on stay}
+#fitting svm
+modelsvm <- svm(icu_los_day ~.,
+                data = subset(train_compare, select = -sepsis_flg))
+#predicting
+predYsvm = predict(modelsvm, newdata = test_compare)
+
+mean( (test_compare$icu_los_day - predYsvm)^2 ) # test MSE
+sqrt( mean( (test_compare$icu_los_day - predYsvm)^2 ) ) # test RMSE
+```
+Across all predictions, support vector regression does better than linear regression on our dataset, reflecting the dimensionality of ICU patients
+
+
+
+**SUMMARY RMSE:**
+Linear model for whole dataset: 
+3.417015
+linear model for short stay / long stay:
+1.095784 / 1.020549
+support vector model for whole dataset : 
+1.925464
+support vector model for short stay / long stay: 
+0.9101927 / NA
+
+We can see the advantages of fitting support vector machines over linear regression models
+
 
 #FITTING RANDOM FOREST for ICU STAY
 
-How does a random forest compare to our linear model? Random forests additionally allow for exploration into important variables
+How does a random forest compare to our linear model/ support vector model? Random forests additionally allow for exploration into important variables
 ```{r splitting testing/training again}
 set.seed(1)
 
