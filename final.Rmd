@@ -1,28 +1,87 @@
 ---
 title: "Stats Learning Final Project"
-author: "Jack Rudnick, Luke Lorenz, Doug Rosin"
+author: "Luke Lorenz, Jack Rudnick, Doug Rosin"
 date: "4/10/2022"
 output: html_document
 ---
 
+**Important note**
+We have generated additional figures, and they will occasionally be referenced as (table 1), (figure 1), etc. We have attached them along with the submission of this r markdown.
+
 
 **I. Introduction**
 
-– What does your dataset look like? What are the observations? What are the variables and their
-types (categorical vs. quantitative)?
+Intensive care units (ICU) provide complex and resource-intensive treatment for the sickest hospitalized patients. The need for critical care medicine has grown substantially over the past decade and has consumed a huge portion of the income in many countries worldwide (Vincent et al, 2014). In 2010, critical care units represented 13.2% of hospital costs, 4.1% of national health expenditures, and 0.72% of U.S. gross domestic product. Length of stay in the ICU is the primary predictor associated with ICU cost, as a small percentage of patients with a prolonged length of stay in the ICU could consume a large proportion (nearly 50%) of ICU resource use (Evans et al, 2018). Effective prediction tools are strongly needed by clinical staff to adequately manage patient and budget stress.
 
+Intensive care unit (ICU) patient monitoring has the potential to reduce complications and morbidity, and to increase the quality of care by enabling hospitals to deliver higher-quality, cost-effective patient care, and improve the quality of medical services in the ICU (Alghantani et al 2021). Additionally, it is a patient-centered outcome and therefore of interest to families, ICU personnel, and managers (Peres et al 2021). The ICU is among the most resource intensive units in hospitals, so ICU surveillance has the potential to reduce morbidity and plan for improvement of care. There is therefore a demand for ICU monitoring that can provide guidance and report when adverse medical events are anticipated (Alghatani et al 2021). Currently, ICU length of stay is used retrospectively to evaluate ICU efficiency. Patient length of stay prediction at admission could help coordinate care, implement preventative measures, and better communicate with managers, families (Peres et al 2021). 
 
-– Why is this data important and/or interesting, either to you personally or to someone else?
+With prolonged patient stays in the ICU, the burden of care for critically ill patients is massive. Given the role of the Intensive Care Unit (ICU) in providing intensive and specialized nursing and medicinal care for critically ill patients and sustaining life during a period of life-threatening organ system insufficiency, it is unsurprising that ICU’s contain the highest mortality rate of any unit of the hospital. Each year, about 500,000 out of 4 million patients entered into Intensive Care Units (ICU) pass away. In cases of severe illness, patients have an extraordinarily difficult choice to make. Patients can undergo intensive care, described above, to make every attempt to save their life, or they can request palliative care, which provides end of life care for patients and their families. Since early and frequent conversations over end of life treatment plans for patients suffering from serious conditions leads to increased satisfaction and quality of life stemming from care consistent to the patient’s desire, many hospitals have begun implementing machine learning-informed algorithms derived from patient data to inform doctors of patients survival chances and spur these conversations. Predicting mortality in patients hospitalized in ICU is crucial for assessing severity of illness and adjudicating the value of novel treatments mentioned above, interventions and health care policies. Machine learning can utilize important baseline information that can be acquired in a timely manner and therefore serve as accurate predictors in our ICU length of stay calculation. When scaled to all patients that visit ICUs daily, massive amounts of data make it feasible to develop predictive models that can help with management.
 
+A Penn Medicine study examining the effect of an electronic nudge to doctors flagging patients who were at a high risk of death and would benefit from conversations surrounding end of life goals found a significant increase in the prevalence of these conversations between patients with doctors who received the nudge, in comparison to patients with doctors who were in the control group.  Additionally, doctors in the test group still engaged in end of life conversations with patients who were flagged as low mortality risk about 75% more regularly than doctors in the control group.  Even in cases where patients are likely to survive, these conversations are important for doctors and patients to coordinate and plan the best care possible for the patient.  In Section III of this paper, we build models which, similar to Penn Medicine, predict end of life outcomes for patients.  We compare our models with Penn Medicine’s models in the discussion.
 
-– If there is any background information that I should be aware of, please include it here. For
-instance, if you have a jargon-heavy dataset, make sure that you describe it in a way that a
-layperson would understand.
+While patients are admitted to the ICU with significant, typically life threatening injuries, many  also enter with significant comorbidities. A patient admitted for a car crash injury may also unknowingly have kidney disease, which could result in complications in treatment or sub-par recovery. Adverse events and clinical complications are a major cause of mortality and poor outcomes in patients, and substantial effort has been made to improve their recognition (Tomašev 2018). Unfortunately, few predictors have found their way into routine clinical practice because they either lack effective sensitivity and specificity. For example, liver disease can only be positively diagnosed after extensive testing (ultrasound, CT scan, or MRI) or a liver biopsy (Mayo Clinic). These tests may not be performed rapidly upon a patient’s arrival in the ICU, if the attending physician decides to have them performed at all, but as established above, the identification of these conditions can be critical. One medical review of car crash victims noted that conditions (including other medical maladies) could result in missed injuries (Garcia). 
 
+The relevancy of ICU patients with various additional conditions remains after being released from the ICU. A 2010 study that followed 478 ICU patients found that preexisting conditions were associated with the majority of cases that experienced diminished quality of life after being released from the ICU (Orwelius et al.). Our hope is to use easily gathered patient information to predict which patients have pre existing medical conditions. This information could help ICU doctors identify patients that might have complicating factors, and more deliberately order tests for those conditions to better inform their treatment.
 
-– What are your main research questions?
+We aim to address these motivating questions of mortality, ICU stay, and pre-ICU conditions through rigorous application of statistical learning models. Due to the muli-faceted nature of our dataset, numerous models should be used in tandem to produce robust and accurate classification. These approaches allow us to thoroughly assess clinical features most commonly associated with our questions of interest.
+
 
 **II. Methods **
+
+We used a 1,776 patient subset of the 26,870 patient MIMIC-II dataset, which was constructed . from the ICUs of Beth Israel Deaconess Medical Center between 2001 to 2008. The MIMIC-II (‘Medical Information Mart for Intensive Care’) dataset is a large, single-center database comprising information relating to patients admitted to critical care units at a large care hospital. Data includes vital signs, medications, laboratory measurements, observations and notes charted by care providers, fluid balance, procedure codes, diagnostic codes, imaging reports, hospital length of stay, survival data, and more. Our subset of data contains 46 variables extracted from MIMIC-II, including demographics (e.g. age, weight), clinical observations collected during the first day of ICU stay (e.g. white blood cell count, heart rate), and outcomes (e.g. 28 day mortality and length of stay).
+
+To clean our data, we imputed the median value for continuous numerical variables and the mode observation for factor variables in place of NA observations.  We then iterated over the dataset 20 times, constructing a random forest and used the resulting proximity to repeatedly impute the NA values for a more accurate estimate of the unknown data.  Finally, we removed certain variables with obvious covariance, including hosp_exp_flg, icu_exp_flg, day_28_flg from the data, as in many cases incidences of mortality were indicated in multiple categories.  We also removed mort_day_censored, since it was an extension of censor_flg, where observations under 730 indicate death and observations over 730 indicate survival.
+
+#Our dataset below contains 1776 observations and 46 different columns:
+
+aline_flg: IAC used (categorical, 1 = year, 0 = no)
+icu_los_day: length of stay in ICU (days, quantitative)
+hospital_los_day: length of stay in hospital (days, quantitative)
+age: age at baseline (years, quantitative)
+gender_num: patient gender (1 = male; 0=female)
+weight_first: first weight, (kg, quantitative)
+bmi: patient BMI, (quantitative)
+sapsi_first: first SAPS I score (quantitative)
+sofa_first: first SOFA score (quantitative)
+service_unit: type of service unit (character: FICU, MICU, SICU)
+service_num: service as a quantitative (categorical: 0 = MICU or FICU, 1 = SICU)
+day_icu_intime: day of week of ICU admission (character)
+day_icu_intime_num: day of week of ICU admission (quantitative, corresponds with day_icu_intime)
+hour_icu_intime: hour of ICU admission (quantitative, hour of admission using 24hr clock)
+hosp_exp_flg: death in hospital (categorical: 1 = yes, 0 = no)
+icu_exp_flg: death in ICU (categorical: 1 = yes, 0 = no)
+day_28_flg: death within 28 days (categorical: 1 = yes, 0 = no)
+mort_day_censored: day post ICU admission of censoring or death (days, quantitative)
+censor_flg: censored or death (categorical: 0 = death, 1 = censored)
+sepsis_flg: sepsis present (categorical: 0 = no, 1 = yes -- absent (0) for all)
+chf_flg: Congestive heart failure (categorical: 0 = no, 1 = yes)
+afib_flg: Atrial fibrillation (categorical: 0 = no, 1 = yes)
+renal_flg: Chronic renal disease (categorical: 0 = no, 1 = yes)
+liver_flg: Liver Disease (categorical: 0 = no, 1 = yes)
+copd_flg: Chronic obstructive pulmonary disease (categorical: 0 = no, 1 = yes)
+cad_flg: Coronary artery disease (categorical: 0 = no, 1 = yes)
+stroke_flg: Stroke (categorical: 0 = no, 1 = yes)
+mal_flg: Malignancy (categorical: 0 = no, 1 = yes)
+resp_flg: Respiratory disease (non-COPD) (categorical: 0 = no, 1 = yes)
+map_1st: Mean arterial pressure (mmHg, quantitative)
+hr_1st: Heart Rate (quantitative)
+temp_1st: Temperature (F, quantitative)
+spo2_1st: S_pO_2 (%, quantitative)
+abg_count: arterial blood gas count (number of tests, quantitative)
+wbc_first: first White blood cell count (K/uL, quantitative)
+hgb_first: first Hemoglobin (g/dL, quantitative)
+platelet_first: first Platelets (K/u, quantitativeL)
+sodium_first: first Sodium (mEq/L, quantitative)
+potassium_first: first Potassium (mEq/L, quantitative)
+tco2_first: first Bicarbonate (mEq/L, quantitative)
+chloride_first: first Chloride (mEq/L, quantitative)
+bun_first: first Blood urea nitrogen (mg/dL, quantitative)
+creatinine_first: first Creatinine (mg/dL, quantitative)
+po2_first: first PaO_2 (mmHg, quantitative)
+pco2_first: first PaCO_2 (mmHg, quantitative)
+iv_day_1: input fluids by IV on day 1 (mL, quantitative)
+
+
 
 
 **III. Results **
@@ -105,23 +164,16 @@ data <- data %>%
                                levels = c(0,1),
                                labels = c("No","Yes"))
          )
-
 ```
-
-
 
 
 ```{r imputing NA values}
 na_indicies <- which(is.na(data), arr.ind=TRUE)  
-
-
 # Function to calculate the mode
 Mode <- function(x) {
   xx <- unique(x)
   xx[which.max(tabulate(match(x, xx)))]
 }
-
-
 #replace the factor variables with the mode
 for(i in 1:ncol(data)){
   for(j in 1:nrow(data)){
@@ -139,13 +191,14 @@ for(i in 1:ncol(data)){
   }
 }
 
+
 ```
 We have ~1200 total vars that are NA, so we begin by replacing categorical NA with the mode of the column, and numeric NA's with the median. We then create a function that takes in a proximity matrix and updates imputed NA values 
 
 #Mean / Mode table
-```{r getting the mean and the mode of all columns}
+```{r getting the mean and the mode of all columns for summary purposes}
 meanModeTable <- data
-
+#replacing all observations  in  a column  with the median or mode
 for(i in 1:ncol(meanModeTable)){
   if(class(meanModeTable[,i]) == "numeric"){
     meanModeTable[,i] <- mean(meanModeTable[,i])
@@ -153,8 +206,9 @@ for(i in 1:ncol(meanModeTable)){
     meanModeTable[,i] <- Mode(na.omit(meanModeTable[,i]))
   }
 }
+#slicing out only one row (all we need)
 meanModeTable <- meanModeTable[1,]
-view(meanModeTable)
+
 ```
 
 ```{r function to update NA values based on the prox matrix}
@@ -166,7 +220,6 @@ iterate <- function(proxMatrix){
   colNum <- na_indicies[i,-1]
   column_name <- column_names[colNum]
   # If the column contains numeric variables as opposed to categorical
-
   if(sapply(data[,colNum], class)[1] == "numeric"){
     # print("Entering col 5")
     #updtating NA val with imputed val across the column
@@ -191,10 +244,14 @@ iterate <- function(proxMatrix){
 }
 ```
 
+
+
+
+
 Run the function above 10 times on our data
 ```{r imputing na data}
-#only doing 10 iterations due to the large number of NA's
-for (i in 1:10){
+#only doing 5 iterations due to the large number of NA's
+for (i in 1:5){
   #Fitting random forest to predict censor + getting prox mtx
   rf <- randomForest(formula = censor_flg ~., 
                    data = data,
@@ -204,12 +261,18 @@ for (i in 1:10){
   iterate(pmtx)
   print(paste("iteration", i , "done"))
 }
+
+#creates dataframe "data"- base dataframe for the rest of the project
 ```
+
+
+
+
 
 **QUESTION OF INTEREST #1: PREDICTING LENGTH OF ICU STAY**
 
-Motivation:
-Due to the ominous nature of ICU patients, no singular model should be used in all situations. We therefore employ multiple models for robust predictions of ICU length of stay. We start with a linear regression model, as there is a clear interpretation of the relationship between our variables of interest and ICU length of stay outcomes. We then compare outcomes of linear regression to support vector regression, which provides a better fit on non-linear data. We conclude with a random forest model which utilizes cross validation, and will not be subjected to overfitting.
+
+Due to the ominous nature of ICU patients, no singular model should be used in all situations. We therefore employ multiple models for robust predictions of ICU length of stay. We start with a linear regression model, as there is a clear interpretation of the relationship between our variables of interest and ICU length of stay outcomes. We then compare outcomes of linear regression to support vector regression, which provides a better fit on non-linear data. We conclude with a random forest model which utilizes cross validation, and will not be subjected to over fitting.
 
 #LINEAR REGRESSION FOR ICU STAY
 
@@ -223,7 +286,6 @@ Looking at some summary information, the average length of stay in the ICU was a
 
 Continuing with some summary info, plotting brief exploratory quantile regression for age and ICU stay
 ```{r brief quantile regression for observation of age on icu stay}
-
 colors <- c("#ffe6e6", "#ffcccc", "#ff9999", "#ff6666", "#ff3333",
             "#ff0000", "#cc0000", "#b30000", "#800000", "#4d0000", "#000000") #colors for regression lines
 multi_rqfit <- rq(icu_los_day ~ age, data = data, tau = seq(0, 1, by = 0.1)) #quantile regrssion
@@ -238,8 +300,8 @@ obviously, as the age of the patient admitted goes up, the average predicted ICU
 ggplot(data = data,
        aes(x = icu_los_day))+
   geom_histogram(binwidth = 0.5) +
-  labs(x = "Length of Stay in the ICU (Days)")
-
+  labs(x = "Length of Stay in the ICU (Days)")+
+  theme_bw()
 ```
 Looking at the distribution of length of stays, you can see that there are many what people would consider outliers in the graph, there are numerous stays beyond 10 days
 
@@ -248,7 +310,8 @@ ggplot(data = data,
        aes(x = icu_los_day))+
   geom_histogram(binwidth = 0.4) +
   labs(x = "Length of Stay in the Hospital (Days)") +
-  facet_grid(~service_num)
+  facet_grid(~service_num)+
+  theme_bw()
 ```
 When checking medical intensive care unit vs surgical intensive care unit, both seem to have similar distributions and a non-zero number of outliers. Therefore, this length of stay is not unique to the type of ICU that the patient was admitted into.
 
@@ -256,18 +319,17 @@ When checking medical intensive care unit vs surgical intensive care unit, both 
 #computing outlines
 outlier_data <- data %>%
   mutate(outlier = icu_los_day > median(icu_los_day) + IQR(icu_los_day) * 1.5)
-
 ggplot(data = outlier_data,
        aes(x = icu_los_day,
            y =  ""))+
   geom_boxplot() +
-  labs(x = "Length of Stay in the ICU (Days)")
+  labs(x = "Length of Stay in the ICU (Days)")+
+  theme_bw()
 ```
 when looking at this data, we can see we have a large distribution of stays (1776) around the 2-4 day mark, but there are also 214 outliers in the data. These two are equally important to distinguish, as long stays in the ICU are resource intensive and important for allocation with finite spaces.
 
 ```{r getting the percent of outliers}
 count(outlier_data %>% filter(outlier == TRUE))
-
 count(outlier_data %>% filter(outlier == TRUE)) / count(outlier_data %>% filter(outlier == FALSE)) *100
 ```
 These calculations show that 13.7 percent of our patients admitted into the ICU were outliers (214 patients in our dataset)
@@ -278,30 +340,27 @@ Because of the outliers above, we decided to split training data into outliers v
 #For short stay/long
 ```{r splitting into testing/training short stay}
 set.seed(1)
-
 short_stay <- outlier_data %>% filter(outlier == FALSE)
 long_stay <- outlier_data %>% filter(outlier == TRUE)
-
-n <- nrow(short_stay)
-
+n.short <- nrow(short_stay)
 # Common to use 70% or 80% of observations for training set
-train_indices <- sample(1:n, size = floor(0.8*n)) 
+train.indices.short <- sample(1:n.short, size = floor(0.8*n.short)) 
 train_short <- short_stay %>%
-  slice(train_indices)
+  slice(train.indices.short)
 test_short <- short_stay %>%
-  slice(-train_indices)
+  slice(-train.indices.short)
 
-n2 <- nrow(long_stay)
+
+n.long <- nrow(long_stay)
 # 80% of observations for training set
-train_indices2 <- sample(1:n2, size = floor(0.8*n2)) 
+train.indices.long <- sample(1:n.long, size = floor(0.8*n.long)) 
 train_long <- long_stay %>%
-  slice(train_indices2)
+  slice(train.indices.long)
 test_long <- long_stay %>%
-  slice(-train_indices2)
-
+  slice(-train.indices.long)
 ```
 
-```{r}
+```{r checking unique vars}
 #count unique vars, or columns that all contain the same variable and therefore will be excluded from our regression model
 sapply(lapply(data, unique), length)
 ```
@@ -309,11 +368,10 @@ Checking for unique variables, we can see sepsis_flg only has one variable, so w
 
 ```{r Linear regression model for shorter stay (on training)}
 #Taking a linear model without sepsis, because that column has no unique values and will result in error if run
-m <- lm(formula = icu_los_day ~ ., data = subset(train_short,
+m.short.stay <- lm(formula = icu_los_day ~ ., data = subset(train_short,
                                                  select = -sepsis_flg)) 
 #making predictions on the test data
-pred_short_stay <- predict(m, newdata = test_short)
-
+pred_short_stay <- predict(m.short.stay, newdata = test_short)
 #compute MSE and RMSE
 mean( (test_short$icu_los_day - pred_short_stay)^2 ) # test MSE
 sqrt( mean( (test_short$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
@@ -323,13 +381,12 @@ How do these values compare to our longer stay model?
 
 #Repeating the steps for longer stay
 
-```{r}
+```{r longer stay}
 #same procedure as fitting our linear model for short stay
-m2 <- lm(formula = icu_los_day ~ ., data = subset(train_long,
+m.long.stay <- lm(formula = icu_los_day ~ ., data = subset(train_long,
                                                  select = -sepsis_flg)) 
 #making predictions on the test data
-pred_long_stay <- predict(m2, newdata = test_long)
-
+pred_long_stay <- predict(m.long.stay, newdata = test_long)
 #compute MSE and RMSE
 mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
@@ -340,9 +397,9 @@ How do these rates compare to if we were to fit only 1 model on the dataset?
 #Testing on a singluar model for RMSE value comparison
 ```{r testing without outlier filtering (both short and long stays)}
 set.seed(1)
-n3 <- nrow(data)
+n.los <- nrow(data)
 # Common to use 70% or 80% of observations for training set
-train_indices3 <- sample(1:n3, size = floor(0.8*n3)) 
+train_indices3 <- sample(1:n.los, size = floor(0.8*n.los)) 
 train_compare <- data %>%
   slice(train_indices3)
 test_compare <- data %>%
@@ -350,10 +407,9 @@ test_compare <- data %>%
 ```
 
 ```{r testing without outlier filtering}
-m3 <- lm(formula = icu_los_day ~ ., data = subset(test_compare,
+m.los <- lm(formula = icu_los_day ~ ., data = subset(test_compare,
                                                  select = -sepsis_flg))
-pred_all_stay <- predict(m3, newdata = test_compare)
-
+pred_all_stay <- predict(m.los, newdata = test_compare)
 #computing
 mean( (test_compare$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_compare$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
@@ -369,8 +425,7 @@ Linear regression typically cannot capture the non linearity in a dataset and th
 modelsvm <- svm(icu_los_day ~.,
                 data = subset(train_short, select = -sepsis_flg))
 #predicting
-predYsvm = predict(modelsvm, newdata = test_short)
-
+predYsvm <- predict(modelsvm, newdata = test_short)
 mean( (test_short$icu_los_day - predYsvm)^2 ) # test MSE
 sqrt( mean( (test_short$icu_los_day - predYsvm)^2 ) ) # test RMSE
 ```
@@ -397,11 +452,10 @@ modelsvm <- svm(icu_los_day ~.,
                 data = subset(train_compare, select = -sepsis_flg))
 #predicting
 predYsvm = predict(modelsvm, newdata = test_compare)
-
 mean( (test_compare$icu_los_day - predYsvm)^2 ) # test MSE
 sqrt( mean( (test_compare$icu_los_day - predYsvm)^2 ) ) # test RMSE
 ```
-Across all predictions, support vector regression does better than linear regression on our dataset, reflecting the dimensionality of ICU patients
+Across all predictions, support vector regression does better than linear regression on our dataset, reflecting the multi-dimensional nature of ICU patients
 
 
 
@@ -409,14 +463,20 @@ Across all predictions, support vector regression does better than linear regres
 
 Linear model for whole dataset: 
 3.417015
+
 linear model for short stay / long stay:
 1.095784 / 1.020549
+
 support vector model for whole dataset : 
 1.925464
+
 support vector model for short stay / long stay: 
 0.9101927 / NA
 
-We can see the advantages of fitting support vector machines over linear regression models
+Random forest for whole dataset (computed below):
+2.153485
+
+We can see the advantages of fitting support vector machines over linear regression models clearly displayed through the rmse.
 
 
 #FITTING RANDOM FOREST for ICU STAY
@@ -424,50 +484,51 @@ We can see the advantages of fitting support vector machines over linear regress
 How does a random forest compare to our linear model/ support vector model? Random forests additionally allow for exploration into important variables
 ```{r splitting testing/training again}
 set.seed(1)
-
-n <- nrow(data)
+n.rf.los <- nrow(data)
 set.seed(10)
 # Common to use 70% or 80% of observations for training set
-train_indices <- sample(1:n, size = floor(0.8*n)) 
-train_rf <- data %>%
+train_indices <- sample(1:n.rf.los, size = floor(0.8*n.rf.los)) 
+train.rf.los <- data %>%
   slice(train_indices)
-test_rf <- data %>%
+test.rf.los <- data %>%
   slice(-train_indices)
-
 ```
 
 Filtering out variable with obvious covariance (length of stay in hospital)
 ```{r fitting random forest without the length of stay in the hospital}
-updated_train_rf <- train_rf %>%
+updated.train.rf <- train.rf.los %>%
   dplyr::select(-hospital_los_day) #taking out length of stay in hospital???
 #removing var with obvious covariance
-
-rf <- randomForest(formula = icu_los_day ~., 
-                   data = train_rf,
+rf.with.hospital <- randomForest(formula = icu_los_day ~., 
+                   data = train.rf.los,
                    importance = TRUE)
 #This is the one we're currently using , DOES NOT contain hospital_los_day
-rf_with_hospital <- randomForest(formula = icu_los_day ~., 
-                   data = updated_train_rf,
+rf.los <- randomForest(formula = icu_los_day ~., 
+                   data = updated.train.rf,
                    importance = TRUE)
 ```
+Here, we filter out the length of stay in the hospital, because the length of stay in the ICU directly interacts with the length of stay in the hospital.
+
 
 ```{r predicting w test data and fitted forest}
-pred_rf <- predict(rf_with_hospital, newdata = test_rf)
+pred.rf.los <- predict(rf.los, newdata = test.rf.los)
 ```
 
 ```{r computing accuracy compared to our split linear models}
-mean( (test_rf$icu_los_day - pred_rf)^2 ) # test MSE
-sqrt( mean( (test_rf$icu_los_day - pred_rf)^2 ) ) # test RMSE
+mean( (test.rf.los$icu_los_day - pred.rf.los)^2 ) # test MSE
+sqrt( mean( (test.rf.los$icu_los_day - pred.rf.los)^2 ) ) # test RMSE
 ```
-our rmse was a bit higher for the random forest, but we also didn't split apart into outliers. 
+our rmse was a higher for the random forest, but we also didn't split our data apart into outliers. This is a more hollistic model where we may not be able to distinguish a singular patient as an outlier, as there may be no testing data to compare quartiles with. 
 
 ```{r variable importance plot}
-varImpPlot(rf_with_hospital, cex = 0.7)
+varImpPlot(rf.los, cex = 0.7)
 ```
-arterial blood gas count seemed to be the most important predictor for predicting length of ICU stay. An arterial blood gas analysis (ABG) measures the balance of oxygen and carbon dioxide in your blood to see how well your lungs are working
+arterial blood gas count was the strongest predictor for predicting length of ICU stay. An arterial blood gas analysis (ABG) measures the balance of oxygen and carbon dioxide in your blood to see how well your lungs are working. Naturally, if the lungs are not working well, the need to stay in the ICU will be longer.
+
+You can additionally see from the distribution on the bottom that there may be one or two outliers skewing data, but as the arterial blood gas count increases we can predict the length of stay in the icu will be longer.
 
 ```{r partial dependence plot}
-pred_obj <- Predictor$new(rf, data = data)
+pred_obj <- Predictor$new(rf.los, data = data)
 temp <- FeatureEffect$new(pred_obj, feature = "abg_count", method = "pdp")
 plot(temp)
 ```
@@ -475,23 +536,22 @@ The length of stay increases significantly as the abg count increases. For the v
 
 
 ```{r}
-pred_obj <- Predictor$new(rf, data = data)
+pred_obj <- Predictor$new(rf.los, data = data)
 temp <- FeatureEffect$new(pred_obj, feature = "resp_flg", method = "pdp")
 plot(temp)
 ```
-many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) (among other variables) also resulted in a small increase in the predicted length of stay.
+Many other variables additionally had impacts on decision. Though less severe than abg count, resp_flg (respiratory infection) (among other variables) also resulted in a small increase in the predicted length of stay.
 
 
 **QUESTION OF INTEREST #2: PREDICTING LIVER DISEASE**
 
-#Predicting Liver Disease
+For this research question we chose liver disease as the malady we hoped to predicting. We chose this disease because of the difficulty in diagnosing it without additional, and sometimes invasive, tests.
 
 ```{r}
 table(data$liver_flg)
-
 99/1677 *100
 ```
-5.90% of patients in the data set had liver disease. This likely means sensitivity will be off. 
+5.90% of patients in the data set had liver disease. This means we have few instances of liver disease to train our models on and test them on. This also means our specificity could be 94.1% if we did nothing more than guess "no" for every patient. All model results will need to take this fact into context.
 
 ```{r select data to predict patients with liver disease}
 data_liver_disease <- data %>%
@@ -509,9 +569,18 @@ data_liver_disease <- data %>%
          liver_flg)
 ```
 
-selecting for things that can be quickly tested for when a patient is admitted to the ICU or info than easily be gotten by docotors. 
+Our response variable is liver_flg, which is a factor of two levels (“No” and “Yes”). Observations with “Yes” are patients that have liver disease. 
+
+Our predictor variables were only measurements that could easily be gathered by doctors in an ICU or information that would be gathered as a matter of routine. The variables selected can be seen in the code chunk above. Their definitions can been seen in our formal definitions section. 
+
+With these measurement, we go about attempting to predict liver disease with information that is easily accessible for ICU doctors and nurses. 
 
 #liver disease method one: logistic regression
+
+Our first method for predicting liver disease is logistic regression. We picked logistic regression becauase of the yes/no nature of our response variable. A patient either has liver disease or does not have liver disease. Adtionally, as one of the first methods of prediction we were introduced too, and a simpler method of prediction as well, we feel comfortable with this method of regression. Thus, we wanted to see how it preformed on real world data, and see how it compares to the random forest method we will use later. 
+
+first we split our data set into a test a training data set.
+
 ```{r split into test and train for liver disease}
 p <- nrow(data_liver_disease)
 set.seed(1)
@@ -523,24 +592,25 @@ test_liver_data <- data_liver_disease %>%
   slice(-train_liver_indices)
 ```
 
+Next, we fit a model using training data and get the summary to look at significant variables.  
 ```{r}
-z <- glm(formula = liver_flg ~., data = train_liver_data, family = binomial)
-summary(z)
+liver.glm <- glm(formula = liver_flg ~., data = train_liver_data, family = binomial)
+summary(liver.glm)
 ```
 
-some significant predictors here. 
+We can see several significant variables including platlet_first, hr_1st, pco2_first, hgb_first, and wbc_first. 
+
+Now, we make predictions using our test set on the model created with the training data. 
 
 ```{r}
-pred_prob_liver <- predict(z, newdata = test_liver_data, type = "response")
+pred_prob_liver <- predict(liver.glm, newdata = test_liver_data, type = "response")
 ```
 
-
-```{r use a loop to determine best decision threshold}
-
+Now, we are creating a loop to identify the best decision threshold, iterating over decision thresholds from 0.1 to 0.9 in intervals of 9. We will be caluclating accuracy, sensativity, and specificity for each. 
+```{r use a loop to determine best decision threshold/ hyperparameter}
 store_accuracy <- c()
 store_sensitivity <- c()
 store_specificity <- c()
-
 for( t in seq(from = 0.1, to = 0.9, by = 0.1)) {
   pred_class_labels_liver <- ifelse(pred_prob_liver > t, "Yes", "No")
   conf_mtx_liver <- table(pred_class_labels_liver, test_liver_data$liver_flg)
@@ -554,27 +624,25 @@ for( t in seq(from = 0.1, to = 0.9, by = 0.1)) {
   
   
 }
-
 tibble(decision_threshold = seq(from = 0.1, to = 0.9, by = 0.1),
        accuracy = store_accuracy,
        sensitivity = store_sensitivity,
        specificity = store_specificity)
-
-
 ```
 
 Im selecting a decision threshold of 0.4. This is getting a high sensitivity without sacrificing much in the way of accuracy or specificity. 
 
+Next we create a confusion matrix. 
+
 ```{r}
 pred_class_labels_liver <- ifelse(pred_prob_liver > 0.4, "Yes", "No") # convert to labels
-
 conf_mtx_liver <- table(pred_class_labels_liver, test_liver_data$liver_flg)
 conf_mtx_liver
 ```
 
 The model seems good at predicting patients without liver disease and bad a predicting patients with liver disease. This is worrying given that a doctor wants to see higher sensativity in these cases.  
 
-```{r}
+```{r sensitivity/specificity}
 #accuracy
 sum(diag(conf_mtx_liver))/sum(conf_mtx_liver)
 #sensitivity (true liver disease haves labeled as liver disease haves)
@@ -583,67 +651,65 @@ conf_mtx_liver[2,2]/sum(conf_mtx_liver[,2])
 conf_mtx_liver[1,1]/sum(conf_mtx_liver[,1])
 ```
 
-```{r}
+These results are disappointing. Our accuracy and specificity are both fantastic at 94.7% and 98.4% respectively. However, this is not really the data a doctor would care about. We would rather have high sensitivity and catch everyone with liver disease, even if at the expense of a few false positives. Additionally, we could have achieved a similar specificity by simply guessing "no" for every patient. Hopefully we get better results with the random forest model.  
+
+Our method for picking  decision threshold was somewhat crude. This was partially a result of the optimal threshold we got (0.07) This felt too low, and we were not sure how valid selecting a threshold this low was. That said, we wanted to include an analysis of how our model preforms with that threshold. That discussion occurs below.
+
+```{r ROC curve}
 roc_obj_liver <- roc(predictor = pred_prob_liver, 
                response = test_liver_data$liver_flg)
 plot(roc_obj_liver, legacy.axes = TRUE)
 ```
 
-```{r}
+
+```{r optimal threshold}
 auc(roc_obj_liver)
-
-
 coords(roc_obj_liver) %>%
   mutate(youden = sensitivity + specificity - 1) %>%
   slice_max(youden)
 ```
 
-AUC and youden are both fine, but I think this is from the high specificity and does not really refelct how bad the model is at finding cases of liver disease. 
+As a thought experiment we wanted to calculate the optimal threshold. We arrived at the absurdly low threshold of 0.07 as that threshold. With threshold, our model preforms much better, with  sensitivity of 70%. This comes at the expense of specificity, which is now only 85%. That said, we are happy to make this trade, as we care more about sensitivity, and catching postie cases. We are a little put off by how low the threshold is, and frankly, we are uncertin how valid setting a threshold that low is. This could just be another sign of model weakness; we need to set a threshold that low to capture positives. That said, it could also be a sign of how difficult liver disease is to catch, and it takes very slight aberations from normal to catch positive cases with the health metrics we are using.
 
 #random forest to see importance on liver disease
+
+Our second selected method for this research question was using a random forest to predict liver disease. We choose this for a few reasons. First, our data set is large, and random forrest excels at handling large data sets. Additionally, we were hoping we would get access to the much larger MIMIC IV data set, where random forest’s large data set capabilities would be very advantageous. Additionally, we are using several predictors, and there is not an obvious relationship between the predictors, the predictors when combined, and the response variable. Thus, we are dealing with potentially complex relationships that random forest is well suited for. Random forrest is a “black box” meaning it can be less interpretable than other predictive methods. That said, given the somewhat simplistic goal of this section, we are willing to sacrifice interpretability for results. Similarly, while computationally intensive, we are willing to sacrifice speed for results. 
+
+We hope that this more "advanced" method of mking predictions will improve upon our logistic regression model. 
 `
 ```{r random forest to determine predictor importance on liver disease}
-
 rf_liver <- randomForest(formula =  liver_flg~ ., #for importance of liver disease
                    data = data_liver_disease,
                    importance = TRUE)
 ```
 
-```{r}
+In this code chunk we fit a random forest model in order to view the variable importance plot to identify important variables. We can see in the code chunk below that some variables such as platelet_first, wbc_first, and age have more importance in identifying liver disease than, for example, spo2_1st or temp_1st. 
+
+```{r variable importance plot.}
 varImpPlot(rf_liver, cex = 0.7)
 ```
 
-
-```{r}
+Next, we look towards actually predicting liver disease using the random forest model. First we set the seed and fit a model with our training data. 
+```{r create random forest model to make predictions}
 set.seed(6)
-
 rf_prediction_liver <- randomForest(formula =  liver_flg~ ., #for importance of liver disease
                    data = train_liver_data,
                    importance = TRUE)
 ```
 
-```{r}
-head(rf_prediction_liver$predicted)
-head(rf_prediction_liver$votes)
-rf_prediction_liver$confusion
-rf_prediction_liver$err.rate
-
-plot(1:500, rf_prediction_liver$err.rate[,3])
-```
-
-```{r}
+We then make predictions, using our random forest model, on our test data. 
+```{r make predictions}
 pred_apps <- predict(rf_prediction_liver, newdata = test_liver_data)
-pred_apps
 ```
 
-```{r}
+We then create a confusion matrix by combining our predicted and actual liver data for the test set. 
+```{r create confusion matrix}
 rf_liver_tests <- tibble(predicted = pred_apps,
        actual = test_liver_data$liver_flg)
 ```
 
-```{r}
+```{r assess model performance}
 cf <- table(rf_liver_tests)
-
 #accuracy
 sum(diag(cf))/sum(cf)
 #sensitivity (true liver disease haves labeled as liver disease haves)
@@ -652,7 +718,155 @@ cf[2,2]/sum(cf[,2])
 cf[1,1]/sum(cf[,1])
 ```
 
-Basically we see the same thing here as we did in logistic regression. The model is really good at predicting patients that do not have liver disease and really bad at predicting cases with liver disease. I think this is likely due to a lack of observations with liver disease to train against.   
+The results of the confusion matrix are disappointing. Our model performs worse than the simple logistic regression model. The accuracy is lower along with the sensitivity, which is arguably the single most important statistic for this research question. This is because physicians want to capture as many cases of liver disease as possible, even at the expense of false positives. An extra test may cost time and money, but a missed positive case may cost lives. The specificity suffers from the same issue that plagued the logistic regression model. It is impressive at 99.8%, but this is less impressive when we recognize that we could have guessed no for every observation and achieved a similar specificity. Thus, it is hard to say whether we have an impressive model or just one that is wrong in the right way. 
+
+
+
+**Question 3: Predicting Mortality**
+
+To predict mortality, we first test and compare the accuracy of models built using KNN-Classification, Random Forest, and Logistic Regression on the entirety of the data set. We chose censor_flg(, a binary variable where 1 indicates censoring, or survival, of the patient and 0 indicates death within 730 days (2 years), as our target predictor. 
+
+We consider the observations of patients for which our models predicted mortality to be “high-risk,” and observations for patients for which our model predicted survival to be “low-risk.”  As such, sensitivity, which is generally the accuracy in predicting mortality, can be interpreted as the percentage of high-risk patients who passed away, which we describe as the observed mortality for the high risk group.  Similarly, specificity can be interpreted as the percentage of low-risk patients who are deceased, which we describe as the observed mortality for the low-risk group.  To assess the overall performance of our models, we will compare their accuracy, sensitivity, and specificity, both amongst each other and against the literature.
+
+```{r}
+set.seed(1)
+data.mortality <- read.csv("full_cohort_data.csv")
+```
+This section requires removing some variables that were held in the data set earlier.  Therefore we reload the data and reimpute similar to the process above
+
+
+
+```{r convert to factors again}
+data.mortality <- data.mortality %>%
+  mutate(gender_num = factor(gender_num,
+                             levels = c(0,1),
+                             labels = c("Female", "Male")),
+         aline_flg = factor(aline_flg,
+                             levels = c(0,1),
+                             labels = c("Year", "No")),
+         service_num = factor(service_num,
+                              levels = c(0,1),
+                              labels = c("MICU or FICU", "SICU")),
+         icu_exp_flg = factor(icu_exp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         hosp_exp_flg = factor(hosp_exp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         day_28_flg = factor(day_28_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         censor_flg = factor(censor_flg,
+                               levels = c(0,1),
+                               labels = c("Death","Censored")),
+         sepsis_flg = factor(sepsis_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         chf_flg = factor(chf_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         afib_flg = factor(afib_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         renal_flg = factor(renal_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         liver_flg = factor(liver_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         copd_flg = factor(copd_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         cad_flg = factor(cad_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         stroke_flg = factor(stroke_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         mal_flg = factor(mal_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes")),
+         resp_flg = factor(resp_flg,
+                               levels = c(0,1),
+                               labels = c("No","Yes"))
+         )
+```
+
+
+```{r}
+data.mortality<- data.mortality %>%
+  select(-day_icu_intime, -mort_day_censored, -day_28_flg, -hosp_exp_flg, -icu_exp_flg, -hospital_los_day)
+```
+
+
+```{r imputing NA values}
+na_indicies <- which(is.na(data.mortality), arr.ind=TRUE)  
+
+#replace the factor variables with the mode
+for(i in 1:ncol(data.mortality)){
+  for(j in 1:nrow(data.mortality)){
+    if(class(data.mortality[[i]])== "numeric"){
+      if (is.na(data.mortality[j,i])){
+        data.mortality[j,i] <- median(as.numeric(unlist(data.mortality[,i])),
+                            na.rm= TRUE)
+      }
+    }
+    else{
+      if (is.na(data.mortality[j,i])){
+        data.mortality[j,i]<-Mode(na.omit(data.mortality[,i]))
+    }
+  }
+  }
+}
+```
+
+
+
+```{r}
+iterate.mortality <- function(proxMatrix){
+  for (i in 1:nrow(na_indicies)){
+  column_names <-colnames(data.mortality)
+  # Storing indicies of the na value
+  rowNum <- na_indicies[i,1]
+  colNum <- na_indicies[i,-1]
+  column_name <- column_names[colNum]
+  # If the column contains numeric variables as opposed to categorical
+  if(sapply(data.mortality[,colNum], class)[1] == "numeric"){
+    # print("Entering col 5")
+    #updtating NA val with imputed val across the column
+    imputed_val <- sum(data.mortality[-rowNum,column_name] * proxMatrix[-rowNum,rowNum]/ sum(proxMatrix[-rowNum,rowNum]))
+    data.mortality[rowNum,colNum] <- imputed_val
+    
+  }else{ #Contains categorical vars, not numeric
+    # print("entering other col")
+    #df to store proximity excluding the row of intrest
+    df_factor <- data.frame(proximity = proxMatrix[-rowNum,rowNum],
+                            class = data.mortality[-rowNum,column_name])
+    
+    val <- df_factor %>% #computing for mode
+      group_by_at("class") %>%
+      summarize(avg = mean(proximity))
+    index <- which.max(val$avg)
+    data.mortality[rowNum,column_name] <- val[index,1]
+  }
+}
+  
+  
+}
+```
+
+```{r imputing na data}
+for (i in 1:5){
+  #Fitting random forest to predict censor + getting prox mtx
+  rf <- randomForest(formula = censor_flg ~., 
+                   data = data.mortality,
+                   proximity = TRUE)
+  pmtx <- data.frame(rf$proximity)
+  
+  iterate.mortality(pmtx)
+  print(paste("iteration", i , "done"))
+}
+```
 
 ```{r}
 importance(rf)
@@ -666,67 +880,156 @@ varImpPlot(rf, cex = 0.5)
 It appears cp and ca are important under both MDI and MDA
 
 ```{r}
-age_obj <- Predictor$new(rf, data = data)
+age_obj <- Predictor$new(rf, data = data.mortality)
 age_plot <- FeatureEffect$new(age_obj, feature = "age", method = "pdp", center.at = 0)
 plot(age_plot)
 ```
 
 
-
 ```{r}
-bun_obj <- Predictor$new(rf, data = data)
+bun_obj <- Predictor$new(rf, data = data.mortality)
 bun_plot <- FeatureEffect$new(bun_obj, feature = "bun_first", method = "pdp", center.at = 0)
 plot(bun_plot)
 ```
 
 ```{r}
-los_obj <- Predictor$new(rf, data = data)
+los_obj <- Predictor$new(rf, data = data.mortality)
 bun_plot <- FeatureEffect$new(los_obj, feature = "sapsi_first", method = "pdp", center.at = 0)
 plot(bun_plot)
 ```
+
+### Predict Using Random Forest ####
+### Predict With Random Forest
+
+Predicting mortality with a random forest, we split the data into a training and test set, with 70% of data in the training set.  We then fit a random forest model on the training set, which is then used to make predictions on the testing set.  We compute accuracy, sensitivity, and specificity to assess our model’s performance.
+
 ```{r}
-importance(rf)
-varImpPlot(rf, cex =0.5)
+rf.data<- data.mortality
 ```
 
 
-**QUESTION OF INTEREST #1: PREDICTING LENGTH OF ICU STAY**
+```{r splitting testing/training again}
+set.seed(1)
+n.rf <- nrow(rf.data)
+# Common to use 70% or 80% of observations for training set
+train.indices.rf <- sample(1:n.rf, size = floor(0.7*n.rf)) 
+train.rf <- rf.data %>%
+  slice(train.indices.rf)
+test.rf <- rf.data %>%
+  slice(-train.indices.rf)
+```
+
+
+```{r fit rf to predict mortality}
+ #taking out length of stay in hospital???
+#removing var with obvious covariance
+rf.mortality <- randomForest(formula = censor_flg ~., 
+                   data = train.rf,
+                   importance = TRUE)
+
+```
+
+
+
+```{r predicting w test data and fitted forest}
+pred.rf.mortality <- predict(rf.mortality, newdata = test.rf, type = "response")
+
+```
+
+
+
+```{r}
+#Use the ideal decision threshold from the Youden Index calculation
+#pred.labels.rf <- ifelse(pred.rf.mortality > 0.55057, "Censored", "Death") # use the ideal threshold
+#make a confusion matrix
+conf_mtx <- table(pred.rf.mortality, test.rf$censor_flg)
+conf_mtx
+
+```
+
+```{r}
+rf.accuracy = sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
+rf.specificity = conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
+rf.sensitivity = conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
+
+rf.accuracy
+rf.specificity
+rf.sensitivity
+```
+
+The random forest model performed with the same overall accuracy as the logistic regression model (below), but the random forest outperformed the logistic regression model in the low risk group, with only 9.9% incidence of mortality within 2 years,  but performed slightly than logistic regression in predicting the high-risk group, observing 55% 2 year mortality
+
+
+```{r}
+varImpPlot(rf.mortality, cex = 0.7)
+```
+We find that age, stroke, malignant cancer presence, sapsi score, and blood urea nitrogen levels are most important to the accuracy of the random forest model, while blood urea nitrogen, sapsi score, and white blood cell count are most important for the homogeneity of the nodes and leaves.
+
+It is notable that MeanDecreaseAccuracy tends to hold factor variables such as incidence of stroke in higher regard, while MeanDecreaseGini tends to prioritize continuous variables
+
+```{r}
+pred_obj <- Predictor$new(rf.mortality, data = rf.data)
+bun_plot <- FeatureEffect$new(pred_obj, feature = "age", method = "pdp", center.at = 0)
+plot(bun_plot)
+```
+
+```{r}
+pred_obj <- Predictor$new(rf.mortality, data = rf.data)
+age_plot <- FeatureEffect$new(pred_obj, feature = "bun_first", method = "pdp", center.at = 0)
+plot(age_plot)
+```
+
+```{r}
+pred_obj <- Predictor$new(rf.mortality, data = rf.data)
+age_plot <- FeatureEffect$new(pred_obj, feature = "sapsi_first", method = "pdp", center.at = 0)
+plot(age_plot)
+```
+
+
+```{r}
+pred_obj <- Predictor$new(rf.mortality, data = rf.data)
+age_plot <- FeatureEffect$new(pred_obj, feature = "age", method = "pdp")
+plot(age_plot)
+```
+
+#USING KNN Classification to Predict Mortality
+
+For KNN-Classification, we filter out all factor variables, including gender and incidences of stroke, congestive heart failure, and chronic obstructive pulmonary disease, since this method of modeling is based on the “distance” between two observations and it is impossible to find the distance between factor observations.  We then split the data into train and test sets, and then performed 10-fold cross validation on the training set in order to obtain the optimal nearest neighbors, which was determined to be 12. We then fit a 12NN-Classification model on the entire training set, which was then used to make predictions on the test set. To assess the accuracy of our predictions, we create a confusion matrix to observe the overall accuracy, sensitivity, and specificity of the model.
 
 ```{r}
 set.seed(1)
-mortalitydata <- data
+#data.mortality<- data
+#check for which collumns are numeric
+num_cols <- unlist(lapply(data.mortality, is.numeric))
 ```
 
 ```{r}
-num_cols <- unlist(lapply(mortalitydata, is.numeric))
-```
-
-```{r}
-data.knn <- mortalitydata[ , num_cols] %>%
-  dplyr::select(where(is.numeric))
+#keep only numeric continuous
+data.knn <- data.mortality[ , num_cols] 
 ```
 
 
 ```{r}
-data.knn$censor_flg <- mortalitydata$censor_flg
+#add censor_flg back in
+data.knn$censor_flg <- data.mortality$censor_flg
 ```
 
 
 ## Split Into Training vs. Test
 
 ```{r split into training and test}
-#set.seed(1)
-n <- nrow(data.knn)
-train_indices <- sample(1:n, size = floor(0.8*n))
-train.knn <- data.knn %>% slice(train_indices)
-test.knn <- data.knn %>% slice(-train_indices)
+#split into training and test sets
+set.seed(1)
+n.knn <- nrow(data.knn)
+train.indices.knn <- sample(1:n.knn, size = floor(0.8*n.knn))
+train.knn <- data.knn %>% slice(train.indices.knn)
+test.knn <- data.knn %>% slice(-train.indices.knn)
 ```
 
 ## k-Fold Cross-Validation
 
 ```{r assign observations to folds}
 num_folds <- 10 # number of folds
-
 # Create a variable (`fold_id`) assigning each observation in the training
 # set to a fold between 1 and `num_folds`
 train.knn <- train.knn %>%
@@ -736,11 +1039,9 @@ train.knn <- train.knn %>%
 ```{r k-fold CV}
 # Vector of numbers of nearest neighbors 
 K_seq <- 1:60
-
 # Create vector to store k-fold cross-validation error for each number of
 # nearest neighbors
 store_kCV_err <- c()
-
 # Loop over numbers of nearest neighbors
 for(num_near in K_seq) {
   
@@ -813,32 +1114,28 @@ ggplot(tibble(K = K_seq, err = store_kCV_err), aes(x = K, y = err)) +
 ```{r choose value of K}
 # Choose optimal value of K based on error plot above
 # Note that this is somewhat subjective!
-opt_num_near <- 19
+opt_num_near <- 12
 ```
 
 ```{r fit final model}
 # Fit the final model on the full training set, using the optimal K chosen
 # above
-
 # Separate full training set into predictors (X) and response (Y)
 train_X <- train.knn %>% 
   select(-censor_flg, -fold_id) 
 train_Y <- train.knn %>% 
   pull(censor_flg) 
-
 # Separate test set into predictors (X) and response (Y)
 test_X <- test.knn %>% 
   select(-censor_flg) 
 test_Y <- test.knn %>%
   pull(censor_flg)
-
 # Normalize the predictors in the training and test sets, using the means and
 # standard deviations from the training set only
 train_means <- apply(train_X, MARGIN = 2, FUN = mean)
 train_sds <- apply(train_X, MARGIN = 2, FUN = sd)
 train_X_norm <- scale(train_X)
 test_X_norm <- scale(test_X, center = train_means, scale = train_sds)
-
 knn_preds_final <- knn(train = train_X_norm, 
                        test = test_X_norm, 
                        cl = train_Y, 
@@ -849,118 +1146,44 @@ knn_preds_final <- knn(train = train_X_norm,
 # Make confusion matrix
 conf_mtx <- table(knn_preds_final, test_Y)
 conf_mtx
-
 sum( diag(conf_mtx) )/sum(conf_mtx) # accuracy
 conf_mtx[2,2]/sum(conf_mtx[,2]) # sensitivity
 conf_mtx[1,1]/sum(conf_mtx[,1]) # specificity
 ```
 
-
-
-###LOGISTIC REGRESSION ON DEATH
-
-
-
-#```{r}
-num_cols <- unlist(lapply(data, is.numeric))
-#```
-
-#```{r}
-data.glm <- data[ , num_cols] 
-#```
-
-
-#```{r}
-data.glm$censor_flg <- data$censor_flg
-#```
+In the KNN Classification model (Table 2), overall accuracy was 78.4%, with observed 2 year mortality in the high-risk group of 50.5% and observed mortality in the low risk group of 11.2%
 
 
 
-#```{r convert to factors}
-data <- data %>%
-  mutate(gender_num = factor(gender_num,
-                             levels = c(0,1)),
-                             #labels = c("Female", "Male")),
-         aline_flg = factor(aline_flg,
-                             levels = c(0,1)),
-                             #labels = c("Year", "No")),
-         service_num = factor(service_num,
-                              levels = c(0,1)),
-                              #labels = c("MICU or FICU", "SICU")),
-         icu_exp_flg = factor(icu_exp_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         hosp_exp_flg = factor(hosp_exp_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         day_28_flg = factor(day_28_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         censor_flg = factor(censor_flg,
-                               levels = c(0,1)),
-                               #labels = c("Death","Censored")),
-         sepsis_flg = factor(sepsis_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         chf_flg = factor(chf_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         afib_flg = factor(afib_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         renal_flg = factor(renal_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         liver_flg = factor(liver_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         copd_flg = factor(copd_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         cad_flg = factor(cad_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         stroke_flg = factor(stroke_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         mal_flg = factor(mal_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes")),
-         resp_flg = factor(resp_flg,
-                               levels = c(0,1)),
-                               #labels = c("No","Yes"))
-         )
-#```
+#### LOGISTIC REGRESSION TO PREDICT MORTALITY
 
-Question 1: Cleaned dataset
+For Logistic Regression, we omitted studying sepsis (sepsis_flg) from the model, as no patients in the data set contracted sepsis (see discussion). We then split the data into train and test sets, with 70% of data in the training set and 30% in the test set. We fit a general linear model using logistic regression on the training set, which was then used to make predictions on the test set.  The predictions take the form of a vector of probabilities, between 0 and 1, based on the determined likelihood of the observation being predicted as Censored.  To determine which observations to classify as “Censored” and which to classify as “Death”, we graph a receiver operating characteristic (ROC) curve, which maps the sensitivity vs specificity of the model.  We use the ROC curve to determine the Youden index, or the ideal threshold to maximize sensitivity and specificity in the model. Observations above the Youden index are then classified as “Censored,” and below are classified as “Death.”  Again, we assess the accuracy of our predictions through a confusion matrix.
+
 ```{r}
 #Split into training and test set
 set.seed(1)
-n <- nrow(data)
-train_indices <- sample(1:n, size = floor(0.8*n))
-train_data <- data %>%slice(train_indices)
-test_data <- data %>%slice(-train_indices)
+n.glm <- nrow(data.mortality)
+train.indices.glm <- sample(1:n.glm, size = floor(0.7*n.glm))
+train.glm <- data.mortality %>%slice(train.indices.glm)
+test.glm <- data.mortality %>%slice(-train.indices.glm)
 ```
 
 ```{r imputing NA values for training set}
-na_indicies <- which(is.na(data), arr.ind=TRUE)  
+na_indicies_data_mortality <- which(is.na(data.mortality), arr.ind=TRUE)  
 # Function to calculate the mode
-Mode <- function(x) {
-  xx <- unique(x)
-  xx[which.max(tabulate(match(x, xx)))]
-}
-#replace the factor variables with the mode
-for(i in 1:ncol(train_data)){
-  for(j in 1:nrow(train_data)){
-    if(class(train_data[[i]])== "numeric"){
-      if (is.na(train_data[j,i])){
-        train_data[j,i] <- mean(as.numeric(unlist(train_data[,i])),
+
+#replace nas- factor with mode, numeric with mean
+for(i in 1:ncol(train.glm)){
+  for(j in 1:nrow(train.glm)){
+    if(class(train.glm[[i]])== "numeric"){
+      if (is.na(train.glm[j,i])){
+        train.glm[j,i] <- mean(as.numeric(unlist(train.glm[,i])),
                             na.rm= TRUE)
       }
     }
     else{
-      if (is.na(train_data[j,i])){
-        train_data[j,i]<-Mode(na.omit(train_data[,i]))
+      if (is.na(train.glm[j,i])){
+        train.glm[j,i]<-Mode(na.omit(train.glm[,i]))
     }
   }
   }
@@ -969,23 +1192,19 @@ for(i in 1:ncol(train_data)){
 
 ```{r imputing NA values for test set}
 #na_indicies <- which(is.na(data), arr.ind=TRUE)  
-# Function to calculate the mode
-Mode <- function(x) {
-  xx <- unique(x)
-  xx[which.max(tabulate(match(x, xx)))]
-}
+
 #replace the factor variables with the mode
-for(i in 1:ncol(test_data)){
-  for(j in 1:nrow(test_data)){
-    if(class(test_data[[i]])== "numeric"){
-      if (is.na(test_data[j,i])){
-        test_data[j,i] <- mean(as.numeric(unlist(train_data[,i])),
+for(i in 1:ncol(test.glm)){
+  for(j in 1:nrow(test.glm)){
+    if(class(test.glm[[i]])== "numeric"){
+      if (is.na(test.glm[j,i])){
+        test.glm[j,i] <- mean(as.numeric(unlist(train.glm[,i])), #impute with trainig set means even for test set 
                             na.rm= TRUE)
       }
     }
     else{
-      if (is.na(test_data[j,i])){
-        test_data[j,i]<-Mode(na.omit(train_data[,i]))
+      if (is.na(test.glm[j,i])){
+        test.glm[j,i]<-Mode(na.omit(train.glm[,i]))
     }
   }
   }
@@ -994,57 +1213,35 @@ for(i in 1:ncol(test_data)){
 
 
 
-
-
-```{r}
-train_data<- train_data %>%
-  select(-day_icu_intime, -mort_day_censored, -day_28_flg, -hosp_exp_flg, -icu_exp_flg, -hospital_los_day, -service_unit)
-test_data<- test_data %>%
-  select(-day_icu_intime, -mort_day_censored, -day_28_flg, -hosp_exp_flg, -icu_exp_flg, -hospital_los_day, -service_unit)
-
-```
-
-
-
-
-
-
-
-
-
-**10/10**
 Part 2: Fit logistic regression
 ```{r}
-m <- glm(formula = censor_flg ~ ., 
-          data = subset(train_data,select = -sepsis_flg), 
+#fit logistic regression model
+m.glm.mortality <- glm(formula = censor_flg ~ ., 
+          data = subset(train.glm,select = -sepsis_flg), 
           family = binomial)
-summary(m)
+summary(m.glm.mortality)
 ```
+In the logistic regression model, some notable statistically significant variables include age, gender, incidence of stroke, cancer, and chronic obstructive pulmonary disease, and blood urea nitrogen, albeit with a small coefficient. Holds factor variables in higher importance, as well.
 
-
-
-**5/5**
 Question 3: Model Evaluation
-
 ```{r}
 #Calculate the probability of fault in the test set
-pred_prob <- predict(m, newdata = test_data, type = "response") # predicted probabilities
-
+pred.glm.mortality <- predict(m.glm.mortality, newdata = test.glm, type = "response") # predicted probabilities
 # roc() function to plot an ROC curve for the test set
-roc_obj <- roc(predictor = pred_prob, 
-               response = test_data$censor_flg)
-plot(roc_obj, legacy.axes = TRUE)
+roc_obj_glm <- roc(predictor = pred.glm.mortality, 
+               response = test.glm$censor_flg)
+plot(roc_obj_glm, legacy.axes = TRUE)
 ```
 
 ```{r}
-auc(roc_obj)
+auc(roc_obj_glm)
 ```
 This is somewhat better than a model that randomly guesses.
 
 
 ```{r}
 #find youden index and ideal decision threshold
-coords(roc_obj) %>%
+coords(roc_obj_glm) %>%
   mutate(youden = sensitivity + specificity - 1) %>%
   slice_max(youden)
 ```
@@ -1052,11 +1249,10 @@ The ROC curve looks like a staircase because there are only 4 positives in the t
 
 ```{r}
 #Use the ideal decision threshold from the Youden Index calculation
-pred_class_labels <- ifelse(pred_prob > 0.55057, "Yes", "No") # use the ideal threshold
+pred_class_labels_glm_mortality <- ifelse(pred.glm.mortality > 0.5866, "Yes", "No") # use the ideal threshold
 #make a confusion matrix
-conf_mtx <- table(pred_class_labels, test_data$censor_flg)
+conf_mtx <- table(pred_class_labels_glm_mortality, test.glm$censor_flg)
 conf_mtx
-
 ```
 
 ```{r}
@@ -1065,75 +1261,54 @@ conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
 conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
 ```
 
+In the logistic regression model, overall accuracy was 80.3%, with an observed 2 year mortality of 70.5% in the high risk group and 15.9% in the low risk group
 
-```{r}
-library(cowplot)
-age<- ggplot(train_data, aes(x=age, y=censor_flg)) + 
-  geom_point(alpha=.5) +
-  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
-  labs(x = "Age")
-copd_flg<- ggplot(train_data, aes(x=copd_flg, y=censor_flg)) + 
-  geom_point(alpha=.5) +
-  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial))+
-  labs (x = "Chronic Obstructive Pulmonary Disease")
-stroke_flg<- ggplot(train_data, aes(x=stroke_flg, y=censor_flg)) + 
-  geom_point(alpha=.5) +
-  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
-  labs(x = "Stroke")
-chloride_first<- ggplot(train_data, aes(x=chloride_first, y=censor_flg)) + 
-  geom_point(alpha=.5) +
-  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial)) +
-  labs(x = "First Chloride")
 
-plot_grid(age, chloride_first, copd_flg, stroke_flg )
-```
 ### Split data in half for old vs young
-```{r}
-#rf.data<- read_csv("/Users/dougrosin/Downloads/mortalitydata.csv") %>% select(-X1)
-rf.old<- data %>%
-  filter(age> median(data$age))
 
+
+In all models, however, the importance of age in predicting mortality is undeniable.  Due to the strong response of predicting mortality as a result of old age, we split the data into two age groups, “young” and “old,” based on the median age (56.3 years) in the data set, in order to make predictions more accurately in different age brackets.
+
+we split the data set in half, with observations of patients above the median age placed in one data set, and observations of patients below the median age placed in a separate data set.  We then follow similar processes as above to fit models using logistic regression and random forests on each data set.  
+
+```{r}
+rf.old<- data.mortality %>%
+  filter(age> median(data.mortality$age))
 ```
 
 
 ```{r splitting testing/training again}
 set.seed(1)
-n <- nrow(rf.old)
+n.old <- nrow(rf.old)
 # Common to use 70% or 80% of observations for training set
-train.indices.rf <- sample(1:n, size = floor(0.7*n)) 
-train.rf <- rf.old %>%
-  slice(train.indices.rf)
-test.rf <- rf.old %>%
-  slice(-train.indices.rf)
+train.indices.old <- sample(1:n.old, size = floor(0.7*n.old)) 
+train.old <- rf.old %>%
+  slice(train.indices.old)
+test.old <- rf.old %>%
+  slice(-train.indices.old)
 ```
 
 
-```{r fit rf to predict mortality}
+```{r}
  #taking out length of stay in hospital???
 #removing var with obvious covariance
 glm.old <- glm(formula = censor_flg ~., 
-                   data = subset(train.rf, select = -sepsis_flg),
+                   data = subset(train.old, select = -sepsis_flg),
                    family = binomial)
-
 ```
-
 
 
 
 ```{r predicting w test data and fitted forest}
-pred_prob<- predict(glm.old, newdata = test.rf, type = "response")
-
+pred.glm.old<- predict(glm.old, newdata = test.old, type = "response")
 ```
-
-
 
 
 ```{r}
 #Calculate the probability of fault in the test set
-
 # roc() function to plot an ROC curve for the test set
-roc_obj <- roc(predictor = pred_prob, 
-               response = test.rf$censor_flg)
+roc_obj <- roc(predictor = pred.glm.old, 
+               response = test.old$censor_flg)
 plot(roc_obj, legacy.axes = TRUE)
 ```
 
@@ -1153,11 +1328,10 @@ coords(roc_obj) %>%
 
 ```{r}
 #Use the ideal decision threshold from the Youden Index calculation
-pred_class_labels <- ifelse(pred_prob > 0.4749, "Yes", "No") # use the ideal threshold
+pred_class_labels <- ifelse(pred.glm.old > 0.4749, "Yes", "No") # use the ideal threshold
 #make a confusion matrix
-conf_mtx <- table(pred_class_labels, test.rf$censor_flg)
+conf_mtx <- table(pred_class_labels, test.old$censor_flg)
 conf_mtx
-
 ```
 
 ```{r}
@@ -1167,30 +1341,24 @@ conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
 ```
 
 
-
-
-
-```{r}
+```{r fitting rf on old age}
 rf.old.model <- randomForest(formula = censor_flg ~., 
-                   data = subset(train.rf, select = -sepsis_flg),
+                   data = subset(train.old, select = -sepsis_flg),
                    importance = TRUE)
 ```
 
 
 ```{r predicting w test data and fitted forest}
-pred.old <- predict(rf.old.model, newdata = test.rf, type = "response")
-
+pred.rf.old <- predict(rf.old.model, newdata = test.old, type = "response")
 ```
-
 
 
 ```{r}
 #Use the ideal decision threshold from the Youden Index calculation
-#pred.labels.rf <- ifelse(pred.rf.mortality > 0.55057, "Censored", "Death") # use the ideal threshold
-#make a confusion matrix
-conf_mtx <- table(pred.old, test.rf$censor_flg)
-conf_mtx
 
+#make a confusion matrix
+conf_mtx <- table(pred.rf.old, test.old$censor_flg)
+conf_mtx
 ```
 
 ```{r}
@@ -1199,53 +1367,42 @@ conf_mtx[2,2]/sum(conf_mtx[,2]) # specificity
 conf_mtx[1,1]/sum(conf_mtx[,1]) # sensitivity
 ```
 
+For both logistic and random forest models, we achieve moderately better mortality prediction for the old age group (mean age = 72.3, mortality rate = 46.3%, N=888) but suffer losses in overall accuracy and prediction of survival
 
 ### Predict on young
 ```{r}
-#rf.data<- read_csv("/Users/dougrosin/Downloads/mortalitydata.csv") %>% select(-X1)
-rf.young<- data %>%
-  filter(age< median(data$age))
-
+#filter for data under median age
+rf.young<- data.mortality%>%
+  filter(age< median(data.mortality$age))
 ```
-
-
-
 
 ```{r splitting testing/training again}
 set.seed(1)
-n <- nrow(rf.young)
+n.young<- nrow(rf.young)
 # Common to use 70% or 80% of observations for training set
-train.indices.rf <- sample(1:n, size = floor(0.7*n)) 
+train.ind.young <- sample(1:n.young, size = floor(0.7*n.young)) 
 train.rf.young <- rf.young %>%
-  slice(train.indices.rf)
+  slice(train.ind.young)
 test.rf.young <- rf.young %>%
-  slice(-train.indices.rf)
+  slice(-train.ind.young)
 ```
 
 
-```{r fit rf to predict mortality}
- #taking out length of stay in hospital???
-#removing var with obvious covariance
+```{r fit glm to predict mortality}
 glm.young <- glm(formula = censor_flg ~., 
                    data = subset(train.rf.young, select = -sepsis_flg),
                    family = binomial)
-
 ```
-
-
 
 
 ```{r predicting w test data and fitted forest}
 pred.prob.young.glm<- predict(glm.young, newdata = test.rf.young, type = "response")
-
 ```
-
 
 
 
 ```{r}
 #Calculate the probability of fault in the test set
-
 # roc() function to plot an ROC curve for the test set
 roc_obj <- roc(predictor = pred.prob.young.glm, 
                response = test.rf.young$censor_flg)
@@ -1255,7 +1412,7 @@ plot(roc_obj, legacy.axes = TRUE)
 ```{r}
 auc(roc_obj)
 ```
-This is somewhat better than a model that randomly guesses.
+
 
 
 ```{r}
@@ -1268,11 +1425,10 @@ coords(roc_obj) %>%
 
 ```{r}
 #Use the ideal decision threshold from the Youden Index calculation
-pred_class_labels <- ifelse(pred.prob.young.glm > 0.4236, "Yes", "No") # use the ideal threshold
+pred_class_labels <- ifelse(pred.prob.young.glm > 0.4235, "Yes", "No") # use the ideal threshold
 #make a confusion matrix
 conf_mtx <- table(pred_class_labels, test.rf.young$censor_flg)
 conf_mtx
-
 ```
 
 ```{r}
@@ -1313,11 +1469,8 @@ df2 %>%
   geom_line(aes(x =ntrees, y = accuracy, colour = "green"))+
   geom_line(aes(x = ntrees, y = censor_accuracy, colour = "blue"))+
   geom_line(aes(x = ntrees, y = mortality_accuracy, colour = "red"))
-
 ##ntrees = 181 maximizes complexity, and accuracy across all three levels
 ```
-
-
 
 
 
@@ -1333,10 +1486,30 @@ conf_mtx
 conf_mtx[1,1]/sum(conf_mtx[,1])
 conf_mtx[2,2]/sum(conf_mtx[,2])
 sum( diag(conf_mtx) )/sum(conf_mtx)
+```
+In the young age group (mean age= 36.4, mortality rate = 9.7%, N = 888), we achieve higher accuracy and superior prediction of survival, but the observed 2 year mortality for the high risk group falls significantly, to 22.7% in the linear regression model and just 9.1% in the random forest model
 
+
+All three models, regardless of data split, significantly outperformed random assignment to “Survival” and “Death” based on data means
+
+
+### Comparing SAPSI Score
+```{r}
+sapsi.data<- data.mortality
 ```
 
+```{r}
+sapsi.data<- sapsi.data %>% mutate(logit = -7.7631+(0.0737*sapsi_first)+ (0.9971*log(sapsi_first+1)),
+                                   predicted.mortality = exp(logit)/(1+ exp(logit)))
+#The highest predicted mortality from sapsi in this data is 13%. As we know from our other models, this is false
+```
+
+
+
 **IV. Discussion**
+
+
+
 
 
 
@@ -1345,4 +1518,3 @@ sum( diag(conf_mtx) )/sum(conf_mtx)
 – Cite where you retrieved your data.
 – If you did any background research on your topic (e.g., to figure out what a variable means or to
 verify whether your results make sense), include those sources too.
-
