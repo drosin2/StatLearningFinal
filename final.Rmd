@@ -6,7 +6,14 @@ output: html_document
 ---
 
 **Important note**
-We have generated additional figures, and they will occasionally be referenced as (table 1), (figure 1), etc. We have attached them along with the submission of this r markdown.
+We have generated additional figures, and they will occasionally be referenced as (table 1), (figure 1), etc. We have attached them with this shareable link along with the submission of this r markdown. We have also attached a copy of the writing for our project report to allow for clarity if needed.
+
+
+LINK TO FIGURES:
+https://docs.google.com/document/d/1faJaVsXWgVLi9n3HjGOjaqsxnFp1svlvIo7nWw5WQa4/edit?usp=sharing
+
+LINK TO PAPER:
+https://docs.google.com/document/d/1mHWCP0GX16UAMDeEpcbnLZ1Ei40WG1Hv2fFJYZnW9lQ/edit?usp=sharing
 
 
 **I. Introduction**
@@ -378,6 +385,11 @@ sqrt( mean( (test_short$icu_los_day - pred_short_stay)^2 ) ) # test RMSE
 ```
 How do these values compare to our longer stay model?
 
+```{r}
+summary(m.short.stay)
+```
+Statistically significant variables include: adg_count, age, and the service unit. 
+
 
 #Repeating the steps for longer stay
 
@@ -392,6 +404,12 @@ mean( (test_long$icu_los_day - pred_long_stay)^2 ) # test MSE
 sqrt( mean( (test_long$icu_los_day - pred_long_stay)^2 ) ) # test RMSE
 ```
 comparatively, these are two small error rates. For a test observation, we will therefore calculate if it is an outlier as we did above, and filter that result down into an appropriate linear model of prediction.
+
+```{r}
+summary(m.short.stay)
+```
+Statistically significant variables are the same as short stay. This means that for the most part, there are no differentiating variables that contribute to identifying key variables for short stay vs long stay
+
 
 How do these rates compare to if we were to fit only 1 model on the dataset?
 #Testing on a singluar model for RMSE value comparison
@@ -1508,7 +1526,24 @@ sapsi.data<- sapsi.data %>% mutate(logit = -7.7631+(0.0737*sapsi_first)+ (0.9971
 
 **IV. Discussion**
 
+The goal of our project was to assess whether a troupe of machine learning techniques offer any advantages to predicting length of stay, mortality, and pre-ICU conditions. Health professionals can benefit from advanced accurate predictions of ICU patient monitoring to adequately make stronger decisions on challenges in managerial health care. Poor management can result in patient rejection due to bed scarcity, loss of resources and manpower, and reduction in hospital revenue and quality of service (Schmidt et al 2013). Integrating machine learning models into intelligent ICU patient monitoring can have several beneficial implications. These implications were explored in three main questions: ICU length of stay, patient mortality, and pre-ICU conditions. Receiving more informed decision making in these areas can result in reductions in unwanted medical situations.
 
+As we assumed, there was not a linear relationship between ICU length of stay and our variables of interest. Support vector regression worked well with our unstructured data, as did a random forest that fit our entire dataset. The models allowed us to observe variables that contributed differences to patients with increased length of stay. Variables such as the abg_count, age, and the service unit were statistically significant predictors of increased ICU stay. All models produced rmse values that indicated increases in prediction accuracy (in the scope of the range of our data, compared to random classification). Gaining full access to the dataset and filtering for patients that stayed beyond 5 days could allow exclusion of patients who passed away in the ICU and therefore more precise data points. A larger sample size would additionally assist in more accurate prediction. When split, our testing dataset for long length of stay contained 46 observations; to truly analyze the  performance of a model we would need more observations among long stay patients to see why they remain in the ICU for a longer period of time.
+
+In a study similar to ours, researchers at the University of Pennsylvania predicted mortality for cancer patients within the Penn Medicine oncology practices.  Using random forest algorithms, this study observed 500 day mortality of 64.4% in the high risk group and 7.6% mortality in the low risk group (logarithmic regression and gradient boosting algorithms were also employed, but only results for the random forest model are published) (Parikh et al 2019). Our best mortality prediction model, using logistic regression, observed 2 year mortality of 70.5% in the high risk group and 15.9% in the low risk group. These models both aim to predict mortality in order to assist in providing the end of life care that the patient desires. Since classifying someone as in the high risk group increases the likelihood of introducing conversations surrounding end of life care, and therefore a choice to choose palliative care, we consider it more important to classify the high-risk group correctly.  As such, we consider our model to have outperformed Penn Medicine’s. 
+
+We also view logistic regression as advantageous over other models due to the ease of modifying the threshold between “Censored” and “Death.”  In this report, we use the Youden index for this threshold in order to maximize both sensitivity and specificity, which resulted in a threshold of 0.5866, which means that observations had to have at least a 58.6% chance of survival to be classified by the model into the low-risk group.  Admittedly, this is a pretty high threshold for this classification; in the future, hospitals could choose a lower threshold in order to increase certainty for classification into the high risk group.
+One important variable that we included in our model is the Simplified Acute Physiology Score (I)  predictor, which is formed from the collection of 14 physiological variables collected within 24 hours of admittance to the ICU to indicate the risk of death (Le Gall et al. 1984). While many of these variables are also included in the general dataset that we use in this paper, we keep SAPSI and view it as an interaction term between the variables that form the score. Using the formula by Le Gall et al. 1993, we mutate a SAPSI mortality prediction into our dataset.  Since the maximum predicted mortality derived through this formula was under 20%, we claim that our models outperform this score calculator.  However, due to the relative importance of SAPSI in predicting in random forests, we still support the collection of this metric for use in machine learning algorithms to predict mortality.
+
+Our efforts to predict ICU pre-conditions with easily gathered medical metrics yield disappointing results. Both our logistic regression model and our random forest model had high accuracy (94.7% and 98.4% respectively) and specificity (98.4% and 99.8% respectively), but underwhelmed with low sensitivity scores (25.9% and 7.4% respectively). Catching positive cases of liver disease is important in an ICU setting where it can cause complications, so we hoped for a higher sensitivity. 
+
+Fortunately, our results appear in line with similar research. Previous efforts to predict liver disease in patients achieved a positive predictive rate between 20% and 30%, similar to our logistic regression model (McLernon 2014). It is possible that liver disease is simply too difficult to predict with great certainty. However, the optimal decision threshold for our logistic regression model of 0.07 yielded a sensitivity of 70%. This result is exciting given the significant improvement in sensitivity compared to our other models, but the low decision threshold and lower specificity of 85% does make us wonder if the higher performance is reflective of a good model or merely an incredibly low decision threshold. Still, our results do suggest that there might be hope for doctors and researchers attempting to identify patients that might have liver disease or other comorbidities. 
+
+Additionally, the limited MIMIC-II data that we were using only had 99 cases of liver disease. This may constrain our ability to properly train and test the model. Getting access to MIMIC-IV would greatly increase the amount of data we had to work with and increase the number of observations we could train and test our model on. Additionally, we only used two predictive methods for this research question. Focused study on predicting liver disease would allow for more predictive methods to be used. One of these other methods may prove superior to the ones we used. Finally, we selected live disease in part because it is a difficult comorbidity to diagnose. Applying our same work to a different comorbidity contained in the dataset might produce different results. Testing our process on different diseases would be an interesting extension of this research. In sum, we are unable to confidently predict comorbidities that ICU admittance may have with our current models; however, our work does suggest that this line of research could be fruitful if further pursued.  
+
+As is with many real world applications, the best result from a model will depend on the data used. When wrangling data, it was crucial to extract covariates, but extraction of any variables must be done with caution because excluding relevant features in advance may generate sub optimal results. Furthermore, many variables interact with cloud data. For example, more severe patients tend to have longer lengths of  stay, but the sickest patients are also those at higher risk of death which will decrease the LOS. Having access to a full dataset, we could filter for patients who stayed beyond 5 days in the ICU, thus eliminating patients who passed shortly after admission, and examine what predicts longer stays in these patients. We additionally predicted mortality after two years; in many cases, hospitals are interested primarily in 6 month mortality. We also used the MIMIC database which represents a subset of a patient population from a singular hospital in Boston, and does not generalize to other populations or hospital systems in other areas across the United States and rest of the world. Additionally, machine learning algorithms to predict patient mortality typically utilize much larger patient databases with a wider array of variables.  Finally, our data contained no observations of sepsis, which is a primary target to either prevent or predict using machine learning since sepsis management is highly time sensitive in order to prevent mortality (Goh et al. 2021). It is unrealistic that there are incidences of sepsis at Beth Israel Hospital, so obtaining and training models on data containing sepsis is critical for future research to understand how sepsis affects patients in hospitals and the ICU. 
+
+Future directions and extensions of this research  will involve extending the scope beyond Beth Israel Medical center, using holistic data to make broader optimal clinical intervention decisions. This research project thus lays a foundation for the future application of 3 patient related prediction models in ICU clinical practice.
 
 
 
@@ -1516,5 +1551,43 @@ sapsi.data<- sapsi.data %>% mutate(logit = -7.7631+(0.0737*sapsi_first)+ (0.9971
 
 **IV. Bibliography**
 – Cite where you retrieved your data.
-– If you did any background research on your topic (e.g., to figure out what a variable means or to
-verify whether your results make sense), include those sources too.
+
+#References:
+
+Alghatani, K., Ammar, N., Rezgui, A., & Shaban-Nejad, A. (2021). Predicting Intensive Care Unit Length of Stay and Mortality Using Patient Vital Signs: Machine Learning Model Development and Validation. JMIR medical informatics, 9(5), e21347. 
+
+Evans, J.; Kobewka, D.; Thavorn, K.; D’Egidio, G.; Rosenberg, E.; Kyeremanteng, K. The impact of reducing intensive care unit length of stay on hospital costs: Evidence from a tertiary care hospital in Canada. Can. J. Anesth. J. Can. d’anesthésie 2018, 65, 627–635
+
+Garcia, Alberto. “Critical care issues in the early management of severe trauma.” The Surgical clinics of North America vol. 86,6 (2006): 1359-87. doi:10.1016/j.suc.2006.07.004
+
+Le Gall JR, Loirat P, Alperovitch A, et al. A simplified acute physiology score for ICU patients. Critical Care Medicine. 1984 Nov;12(11):975-977. DOI: 10.1097/00003246-198411000-00012. PMID: 6499483.
+
+Marshall JC, Bosco L, Adhikari NK, Connolly B, Diaz JV, Dorman T, Fowler RA, Meyfroidt G, Nakagawa S, Pelosi P, Vincent JL, Vollman K, Zimmerman J. “What is an intensive care unit? A report of the task force of the World Federation of Societies of Intensive and Critical Care Medicine.” J Crit Care. 2017 Feb;37:270-276. doi: 10.1016/j.jcrc.2016.07.015. Epub 2016 Jul 25. PMID: 27612678.
+
+Mayo Clinic. “Liver Disease.” Mayo Clinic. 
+
+Orwelius, Lotti et al. “Pre-existing disease: the most important factor for health-related quality of life
+	long-term after critical illness: a prospective, longitudinal, multicentre trial.” Critical care
+(London, England) vol. 14,2 (2010): R67. doi:10.1186/cc8967
+
+Parikh RB, Manz C, Chivers C, et al. Machine Learning Approaches to Predict 6-Month Mortality Among Patients With Cancer. JAMA Netw Open. 2019;2(10):e1915997.
+
+Peres, I. T., Hamacher, S., Oliveira, F., Bozza, F. A., & Salluh, J. (2021). Prediction of intensive care units length of stay: a concise review. Predição do tempo de permanência em unidades de terapia intensiva: uma revisão concisa. Revista Brasileira de terapia intensiva, 33(2), 183–187. https://doi.org/10.5935/0103-507X.20210025
+
+Rapoport J, Teres D, Lemeshow S, Avrunin JS, Haber R. Explaining variability of cost using a severity-of-illness measure for ICU patients. Med Care. Apr 1990;28(4):338-348.
+
+Rapoport J, Teres D, Lemeshow S, Gehlbach S. A method for assessing the clinical performance and cost-effectiveness of intensive care units: a multicenter inception cohort study. Crit Care Med. Sep 1994;22(9):1385-1391.
+
+Shaban-Nejad A, Michalowski M, Buckeridge DL. (2018) Health intelligence: how artificial intelligence transforms population and personalized health. NPJ Digit Med,1:53
+
+Schmidt R, Geisler S, Spreckelsen C. Decision support for hospital bed management using adaptable individual length of stay estimations and shared resources. BMC Med Inform Decis Mak. 2013 Jan 07;13:3
+
+Tomašev, N., Glorot, X., Rae, J.W. et al. A clinically applicable approach to continuous prediction of future acute kidney injury. Nature 572, 116–119 (2019)
+
+Vincent, J.L.; Marshall, J.C.; Namendys-Silva, S.A.; Francois, B.; Martin-Loeches, I.; Lipman, J.; Reinhart, K.; Antonelli, M.; Pickkers, P.; Njimi, H.; et al. Assessment of the worldwide burden of critical illness: The Intensive Care Over Nations (ICON) audit. Lancet Resp. Med. 2014, 2, 380–386
+
+World Health Organization: WHO Definition of Palliative Care. Published 2017. Accessed August 15th, 2017.
+
+Wright  AA, Zhang  B, Ray  A,  et al.  Associations between end-of-life discussions, patient mental health, medical care near death, and caregiver bereavement adjustment.  JAMA. 2008;300(14):1665-1673
+
+
